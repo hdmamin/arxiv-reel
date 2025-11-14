@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import ZAI from 'z-ai-web-dev-sdk'
+import OpenAI from 'openai'
 
 interface ArxivPaper {
   id: string
@@ -14,7 +14,8 @@ interface ArxivPaper {
 interface ProcessedPaper extends ArxivPaper {
   tag?: string
   question?: string
-  coreIdea?: string
+  answer?: string
+  bet?: string
 }
 
 // Fetch and extract full paper content from PDF
@@ -117,28 +118,41 @@ async function searchArxivPapers(maxResults: number = 50, offset: number = 0): P
 // Process paper with LLM to extract tag, question, and core idea
 async function processPaperWithLLM(paper: ArxivPaper): Promise<ProcessedPaper> {
   try {
-    const zai = await ZAI.create()
-    
-    const prompt = `Analyze this arXiv paper and extract the following information in a concise format:
+    console.log('API Key available:', !!process.env.OPENAI_API_KEY)
+
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    })
+
+    const prompt = `Analyze this arXiv paper and extract the following information. This is for a literature review of LLM, symbolic AI, and related ML research.
 
 Paper Title: ${paper.title}
 Abstract: ${paper.abstract}
 
 Please provide:
-1. A 1-2 word tag for the broad topic area (e.g., "LLM inference", "knowledge base", "computer vision")
-2. A 1-line motivating question the authors likely asked themselves (in simple English)
-3. A 1-line core idea or contribution (in simple English)
+
+1. TAG: An extremely quick 1-2 word topic label (e.g., "interpretability", "inference", "synthetic data", "alignment"). Since these are all AI/ML papers, don't use generic tags like "AI" or "LLM" - be specific about the subfield.
+
+2. QUESTION: Put yourself in the researchers' minds. Before they wrote this paper, what was the core question that motivated it? They were likely bumping up against the bounds of existing knowledge - what question extended beyond that boundary? Write in simple Grug-programmer style (like "Grug think big neural net better, but how make big neural net not break?"). Be specific, not generic.
+
+3. ANSWER: The ONE core idea from the paper. Think of the ResNet example: the answer would be "learn f(x) + x instead of f(x)". Maximum information density - provide as much intuition as possible in a single sentence or fragment. Write in simple Grug-programmer style (like "Grug add skip connections so gradient flow better").
+
+4. BET: Research is opinionated - researchers bet on what works and what doesn't. What philosophical bet or assumption underlies this work? For GPT-2, the bet might be "scaling beats handcrafted algorithmic advances". Write in simple Grug-programmer style (like "Grug think more data always better than clever algorithm").
 
 Format your response as JSON:
 {
-  "tag": "topic tag",
-  "question": "motivating question?",
-  "coreIdea": "core idea contribution"
+  "tag": "topic",
+  "question": "Grug wonder: specific research question in simple terms?",
+  "answer": "Grug solve by: core technical idea in simple terms",
+  "bet": "Grug believe: philosophical assumption in simple terms"
 }
 
-Keep each field very concise and accessible.`
+Be concrete, specific, and information-dense. Write like Grug programmer - simple, direct, caveman-style language. Avoid generic statements.`
 
-    const completion = await zai.chat.completions.create({
+    console.log('Making OpenAI API call for paper:', paper.title)
+
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
       messages: [
         {
           role: 'system',
@@ -149,25 +163,27 @@ Keep each field very concise and accessible.`
           content: prompt
         }
       ],
-      temperature: 0.3,
-      max_tokens: 300
+      max_completion_tokens: 300,
+      response_format: { type: 'json_object' }
     })
 
     const responseContent = completion.choices[0]?.message?.content
     console.log('LLM Response for paper:', paper.title, '->', responseContent)
-    
-    let tag = 'AI Research'
-    let question = 'How can we advance machine learning?'
-    let coreIdea = 'A novel approach to improve AI systems'
-    
+
+    let tag = 'ML research'
+    let question = 'Q: Research question not extracted'
+    let answer = 'A: Core idea not extracted'
+    let bet = 'Philosophical assumption not extracted'
+
     if (responseContent) {
       try {
         // Clean up the response to ensure it's valid JSON
         const cleanResponse = responseContent.replace(/```json\n?|\n?```/g, '').trim()
         const extracted = JSON.parse(cleanResponse)
-        tag = extracted.tag || 'AI Research'
-        question = extracted.question || 'How can we advance machine learning?'
-        coreIdea = extracted.coreIdea || 'A novel approach to improve AI systems'
+        tag = extracted.tag || 'ML research'
+        question = extracted.question || 'Q: Research question not extracted'
+        answer = extracted.answer || 'A: Core idea not extracted'
+        bet = extracted.bet || 'Philosophical assumption not extracted'
       } catch (parseError) {
         console.error('Error parsing LLM response:', parseError, 'Response was:', responseContent)
       }
@@ -181,18 +197,23 @@ Keep each field very concise and accessible.`
       ...paper,
       tag,
       question,
-      coreIdea,
+      answer,
+      bet,
       content: '' // Will be fetched on demand
     }
   } catch (error) {
-    console.error('Error processing paper with LLM:', error)
+    console.error('Error processing paper with LLM:', paper.title, error)
+    if (error.response) {
+      console.error('OpenAI API Error Response:', error.response.status, error.response.data)
+    }
   }
   
   return {
     ...paper,
-    tag: 'AI Research',
-    question: 'How can we advance machine learning?',
-    coreIdea: 'A novel approach to improve AI systems',
+    tag: 'ML research',
+    question: 'Q: Research question not extracted',
+    answer: 'A: Core idea not extracted',
+    bet: 'Philosophical assumption not extracted',
     content: ''
   }
 }

@@ -14,21 +14,19 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Z.ai Code Scaffold - AI-Powered Development",
-  description: "Modern Next.js scaffold optimized for AI-powered development with Z.ai. Built with TypeScript, Tailwind CSS, and shadcn/ui.",
-  keywords: ["Z.ai", "Next.js", "TypeScript", "Tailwind CSS", "shadcn/ui", "AI development", "React"],
-  authors: [{ name: "Z.ai Team" }],
+  title: "GrugTok - Research Papers, Grug Style",
+  description: "TikTok-style interface for browsing ML research papers with simple Grug explanations. Swipe through the latest arXiv papers.",
+  keywords: ["GrugTok", "arXiv", "research papers", "ML", "AI", "TikTok", "Grug", "machine learning"],
+  authors: [{ name: "GrugTok Team" }],
   openGraph: {
-    title: "Z.ai Code Scaffold",
-    description: "AI-powered development with modern React stack",
-    url: "https://chat.z.ai",
-    siteName: "Z.ai",
+    title: "GrugTok",
+    description: "Research papers, Grug style",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Z.ai Code Scaffold",
-    description: "AI-powered development with modern React stack",
+    title: "GrugTok",
+    description: "Research papers, Grug style",
   },
 };
 

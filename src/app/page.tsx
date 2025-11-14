@@ -15,7 +15,8 @@ interface Paper {
   publishedAt: string
   tag?: string
   question?: string
-  coreIdea?: string
+  answer?: string
+  bet?: string
   content?: string
 }
 
@@ -52,11 +53,11 @@ export default function Home() {
   const fetchPapers = useCallback(async () => {
     setIsLoading(true)
     try {
-      const response = await fetch('/api/papers?limit=30')
+      const response = await fetch('/api/papers?limit=10')
       if (!response.ok) throw new Error('Failed to fetch papers')
       const data = await response.json()
       setPapers(data.papers)
-      setHasMore(data.papers.length >= 30) // If we got 30 papers, there might be more
+      setHasMore(data.papers.length >= 10) // If we got 10 papers, there might be more
     } catch (error) {
       console.error('Error fetching papers:', error)
     } finally {
@@ -141,6 +142,29 @@ export default function Home() {
 
   const currentPaper = showBookmarks ? bookmarks[currentIndex] : papers[currentIndex]
 
+  // Generate a consistent color for a tag based on its text
+  const getTagColor = (tag: string) => {
+    const colors = [
+      'bg-blue-500/20 text-blue-700 dark:text-blue-300',
+      'bg-green-500/20 text-green-700 dark:text-green-300',
+      'bg-purple-500/20 text-purple-700 dark:text-purple-300',
+      'bg-orange-500/20 text-orange-700 dark:text-orange-300',
+      'bg-pink-500/20 text-pink-700 dark:text-pink-300',
+      'bg-cyan-500/20 text-cyan-700 dark:text-cyan-300',
+      'bg-amber-500/20 text-amber-700 dark:text-amber-300',
+      'bg-rose-500/20 text-rose-700 dark:text-rose-300',
+      'bg-indigo-500/20 text-indigo-700 dark:text-indigo-300',
+      'bg-teal-500/20 text-teal-700 dark:text-teal-300',
+    ]
+
+    // Use a simple hash to consistently map tags to colors
+    let hash = 0
+    for (let i = 0; i < tag.length; i++) {
+      hash = tag.charCodeAt(i) + ((hash << 5) - hash)
+    }
+    return colors[Math.abs(hash) % colors.length]
+  }
+
   const handleBookmark = (paper: Paper) => {
     const isBookmarked = bookmarks.some(b => b.id === paper.id)
     if (isBookmarked) {
@@ -220,7 +244,7 @@ export default function Home() {
       <div className="absolute top-0 left-0 right-0 z-20 p-4 bg-gradient-to-b from-background/80 to-transparent">
         <div className="flex justify-between items-center max-w-4xl mx-auto">
           <div>
-            <h1 className="text-2xl font-bold">arXiv Feed</h1>
+            <h1 className="text-2xl font-bold">GrugTok</h1>
             <p className="text-xs text-muted-foreground mt-1">
               ↑↓ Navigate | Space Flip | B Bookmark | R Refresh | ESC Back
             </p>
@@ -266,48 +290,55 @@ export default function Home() {
               style={{ backfaceVisibility: 'hidden' }}
             >
               <CardContent className="p-8 h-full flex flex-col justify-between">
-                <div className="space-y-6">
+                <div className="space-y-8">
                   {/* Tag */}
                   {currentPaper.tag && (
                     <div className="flex justify-center">
-                      <span className="px-3 py-1 bg-primary/10 text-primary rounded-full text-sm font-medium">
+                      <span className={cn(
+                        "px-4 py-2 rounded-full text-base font-semibold",
+                        getTagColor(currentPaper.tag)
+                      )}>
                         {currentPaper.tag}
                       </span>
                     </div>
                   )}
 
-                  {/* Title */}
-                  <div className="text-center">
-                    <h2 className="text-2xl font-bold leading-tight">
-                      {currentPaper.title}
-                    </h2>
-                  </div>
-
                   {/* Question */}
                   {currentPaper.question && (
                     <div className="text-center">
-                      <p className="text-lg text-muted-foreground italic">
-                        "{currentPaper.question}"
+                      <h3 className="text-sm font-semibold mb-2 text-muted-foreground uppercase tracking-wide">Question</h3>
+                      <p className="text-xl text-muted-foreground italic leading-relaxed">
+                        {currentPaper.question}
                       </p>
                     </div>
                   )}
 
-                  {/* Core Idea */}
-                  {currentPaper.coreIdea && (
+                  {/* Answer (Core Idea) */}
+                  {currentPaper.answer && (
                     <div className="text-center">
-                      <p className="text-lg font-medium text-primary">
-                        {currentPaper.coreIdea}
+                      <h3 className="text-sm font-semibold mb-2 text-muted-foreground uppercase tracking-wide">Answer</h3>
+                      <p className="text-2xl font-bold text-primary leading-relaxed">
+                        {currentPaper.answer}
                       </p>
                     </div>
                   )}
 
-                  {/* Authors */}
-                  <div className="text-center">
-                    <p className="text-sm text-muted-foreground">
-                      {currentPaper.authors.slice(0, 3).join(', ')}
-                      {currentPaper.authors.length > 3 && ' et al.'}
-                    </p>
-                  </div>
+                  {/* Bet (Philosophical Assumption) */}
+                  {currentPaper.bet && (
+                    <div className="text-center">
+                      <h3 className="text-sm font-semibold mb-2 text-muted-foreground uppercase tracking-wide">Bet</h3>
+                      <p className="text-lg text-muted-foreground leading-relaxed">
+                        {currentPaper.bet}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Title hint at bottom */}
+                <div className="text-center mt-4 pt-4 border-t">
+                  <p className="text-xs text-muted-foreground line-clamp-2">
+                    {currentPaper.title}
+                  </p>
                 </div>
               </CardContent>
             </Card>
