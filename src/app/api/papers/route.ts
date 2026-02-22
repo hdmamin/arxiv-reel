@@ -59,28 +59,34 @@ async function fetchPaperContent(arxivId: string): Promise<string> {
 }
 
 
-// Search recent papers from arXiv with multiple categories
+// Search recent papers from arXiv, sorted by submission date
 async function searchArxivPapers(maxResults: number = 50, offset: number = 0): Promise<ArxivPaper[]> {
   const baseUrl = 'http://export.arxiv.org/api/query'
 
-  // Define multiple search queries for different relevant fields
-  const searchQueries = [
-    `search_query=cat:cs.AI+OR+cat:cs.LG+OR+cat:cs.CL+OR+cat:cs.CV+OR+cat:cs.NE&start=${offset}&max_results=${Math.floor(maxResults/5)}`,
-    `search_query=cat:stat.ML+OR+cat:cs.IR+OR+cat:cs.HC+OR+cat:cs.CR&start=${offset}&max_results=${Math.floor(maxResults/5)}`,
-    `search_query=all:"machine learning"+OR+"deep learning"+OR+"neural network"+OR+"large language model"&start=${offset}&max_results=${Math.floor(maxResults/5)}`,
-    `search_query=all:"transformer"+OR+"attention"+OR+"GPT"+OR+"BERT"&start=${offset}&max_results=${Math.floor(maxResults/5)}`,
-    `search_query=all:"reinforcement learning"+OR+"AI ethics"+OR+"foundation model"&start=${offset}&max_results=${Math.floor(maxResults/5)}`
+  // Broad category-based queries sorted by newest first.
+  // We fetch more than needed from each and deduplicate, since there's overlap.
+  const categories = [
+    'cat:cs.AI+OR+cat:cs.LG+OR+cat:cs.CL+OR+cat:cs.NE+OR+cat:cs.IR+OR+cat:cs.HC',
+    'cat:cs.SE+OR+cat:cs.PL+OR+cat:cs.MA+OR+cat:stat.ML'
   ]
+
+  const perQuery = Math.ceil(maxResults / categories.length)
+  const searchQueries = categories.map(cats =>
+    `search_query=${cats}&start=${offset}&max_results=${perQuery}&sortBy=submittedDate&sortOrder=descending`
+  )
 
   const allPapers: ArxivPaper[] = []
   const seenIds = new Set<string>()
+
+  // Only keep papers from the last 7 days
+  const cutoffDate = new Date()
+  cutoffDate.setDate(cutoffDate.getDate() - 7)
 
   try {
     for (const searchQuery of searchQueries) {
       const response = await fetch(`${baseUrl}?${searchQuery}`)
       const xmlText = await response.text()
 
-      // Parse XML (simple parsing for demo)
       const entries = xmlText.split('<entry>').slice(1)
 
       for (const entry of entries) {
@@ -97,8 +103,10 @@ async function searchArxivPapers(maxResults: number = 50, offset: number = 0): P
         const arxivUrl = idMatch ? idMatch[1] : `https://arxiv.org/abs/${arxivId}`
         const publishedAt = publishedMatch ? publishedMatch[1] : new Date().toISOString()
 
-        // Skip duplicates and very short abstracts
-        if (!seenIds.has(arxivId) && abstract.length > 100) {
+        const publishedDate = new Date(publishedAt)
+
+        // Skip duplicates, short abstracts, and papers older than 7 days
+        if (!seenIds.has(arxivId) && abstract.length > 100 && publishedDate >= cutoffDate) {
           seenIds.add(arxivId)
           allPapers.push({
             id: arxivId,
@@ -112,7 +120,8 @@ async function searchArxivPapers(maxResults: number = 50, offset: number = 0): P
       }
     }
 
-    // Sort by recency and limit results
+    console.log(`Fetched ${allPapers.length} papers from last 7 days`)
+
     return allPapers
       .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())
       .slice(0, maxResults)
