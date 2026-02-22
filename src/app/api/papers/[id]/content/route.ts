@@ -121,10 +121,10 @@ String.prototype.removeComments = function() {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const arxivId = params.id
+    const { id: arxivId } = await params
     
     if (!arxivId) {
       return NextResponse.json(

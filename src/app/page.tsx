@@ -156,7 +156,7 @@ export default function Home() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [currentIndex, papers, bookmarks, isFlipped, showBookmarks, fetchPapers])
+  }, [currentIndex, papers, bookmarks, isFlipped, showBookmarks, isActiveMode, fetchPapers])
 
   useEffect(() => {
     fetchPapers()
