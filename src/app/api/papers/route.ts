@@ -18,43 +18,49 @@ interface ProcessedPaper extends ArxivPaper {
   bet?: string
 }
 
-// Fetch and extract full paper content from PDF
-async function fetchFullPaperContent(arxivId: string): Promise<string> {
+const USER_INTERESTS = `synthetic data, post-training/alignment methods, information retrieval/search, embeddings, interpretability (e.g. mechanistic interpretability, representation engineering, etc), program search, low latency language generation (not talking about incremental speedups, more like things that could provide a 100-1000x speedup), program synthesis, code generation, agents and tool use, evaluation/verification particularly in domains where ground truth is hard to obtain, new modes of human-AI collaboration and new UX for scientific computing, AI impact on and role in society`
+
+
+// Fetch paper content from arXiv HTML for deeper analysis
+async function fetchPaperContent(arxivId: string): Promise<string> {
   try {
-    // Construct PDF URL
-    const pdfUrl = `https://arxiv.org/pdf/${arxivId}.pdf`
-    
-    // Download PDF
-    const response = await fetch(pdfUrl)
-    if (!response.ok) {
-      console.log(`Failed to fetch PDF for ${arxivId}: ${response.status}`)
-      return ''
-    }
-    
-    const buffer = await response.arrayBuffer()
-    
-    // Extract text from PDF
-    const pdfData = await pdfparse(Buffer.from(buffer))
-    const text = pdfData.text
-    
-    // Clean up the extracted text
-    const cleanedText = text
-      .replace(/\s+/g, ' ') // Replace multiple whitespace with single space
-      .replace(/\n\s*\n/g, '\n\n') // Replace multiple newlines with double newline
+    const cleanId = arxivId.replace(/v\d+$/, '')
+    const htmlUrl = `https://arxiv.org/html/${cleanId}`
+
+    const response = await fetch(htmlUrl, { signal: AbortSignal.timeout(15000) })
+    if (!response.ok) return ''
+
+    const html = await response.text()
+
+    let text = html
+      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/\s+/g, ' ')
       .trim()
-    
-    console.log(`Extracted ${cleanedText.length} characters from ${arxivId}`)
-    return cleanedText
+
+    if (text.length < 1000) return ''
+
+    // Take intro/methods (~8k chars) and conclusion (~2k chars) to stay within token budget
+    if (text.length > 12000) {
+      const head = text.slice(0, 8000)
+      const tail = text.slice(-2000)
+      text = head + '\n\n[...]\n\n' + tail
+    }
+
+    console.log(`Fetched ${text.length} chars of content for ${arxivId}`)
+    return text
   } catch (error) {
-    console.error(`Error fetching full content for ${arxivId}:`, error)
+    console.log(`Content fetch failed for ${arxivId}:`, (error as Error).message)
     return ''
   }
 }
 
+
 // Search recent papers from arXiv with multiple categories
 async function searchArxivPapers(maxResults: number = 50, offset: number = 0): Promise<ArxivPaper[]> {
   const baseUrl = 'http://export.arxiv.org/api/query'
-  
+
   // Define multiple search queries for different relevant fields
   const searchQueries = [
     `search_query=cat:cs.AI+OR+cat:cs.LG+OR+cat:cs.CL+OR+cat:cs.CV+OR+cat:cs.NE&start=${offset}&max_results=${Math.floor(maxResults/5)}`,
@@ -63,32 +69,32 @@ async function searchArxivPapers(maxResults: number = 50, offset: number = 0): P
     `search_query=all:"transformer"+OR+"attention"+OR+"GPT"+OR+"BERT"&start=${offset}&max_results=${Math.floor(maxResults/5)}`,
     `search_query=all:"reinforcement learning"+OR+"AI ethics"+OR+"foundation model"&start=${offset}&max_results=${Math.floor(maxResults/5)}`
   ]
-  
+
   const allPapers: ArxivPaper[] = []
   const seenIds = new Set<string>()
-  
+
   try {
     for (const searchQuery of searchQueries) {
       const response = await fetch(`${baseUrl}?${searchQuery}`)
       const xmlText = await response.text()
-      
+
       // Parse XML (simple parsing for demo)
       const entries = xmlText.split('<entry>').slice(1)
-      
+
       for (const entry of entries) {
         const titleMatch = entry.match(/<title>(.*?)<\/title>/s)
         const authorMatches = entry.matchAll(/<name>(.*?)<\/name>/g)
         const abstractMatch = entry.match(/<summary>(.*?)<\/summary>/s)
         const idMatch = entry.match(/<id>(.*?)<\/id>/)
         const publishedMatch = entry.match(/<published>(.*?)<\/published>/)
-        
+
         const title = titleMatch ? titleMatch[1].replace(/\s+/g, ' ').trim() : 'Unknown Title'
         const authors = Array.from(authorMatches).map(match => match[1].trim())
         const abstract = abstractMatch ? abstractMatch[1].replace(/\s+/g, ' ').trim() : ''
         const arxivId = idMatch ? idMatch[1].split('/').pop() : `paper_${Math.random()}`
         const arxivUrl = idMatch ? idMatch[1] : `https://arxiv.org/abs/${arxivId}`
         const publishedAt = publishedMatch ? publishedMatch[1] : new Date().toISOString()
-        
+
         // Skip duplicates and very short abstracts
         if (!seenIds.has(arxivId) && abstract.length > 100) {
           seenIds.add(arxivId)
@@ -103,17 +109,70 @@ async function searchArxivPapers(maxResults: number = 50, offset: number = 0): P
         }
       }
     }
-    
+
     // Sort by recency and limit results
     return allPapers
       .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())
       .slice(0, maxResults)
-      
+
   } catch (error) {
     console.error('Error fetching from arXiv:', error)
     return []
   }
 }
+
+
+// Filter papers for relevance using LLM batch evaluation
+async function filterRelevantPapers(papers: ArxivPaper[], targetCount: number): Promise<ArxivPaper[]> {
+  try {
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+
+    const paperList = papers.map((p, i) =>
+      `[${i}] "${p.title}"\n    ${p.abstract.slice(0, 400)}`
+    ).join('\n\n')
+
+    console.log(`Filtering ${papers.length} papers down to ~${targetCount}...`)
+
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-5.2',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a helpful research assistant. Your job is to review recent arxiv publications from the fields of AI and Computer Science and select relevant readings based on the user\'s interests. Focus on ambitious or transformational work, not incremental improvements.'
+        },
+        {
+          role: 'user',
+          content: `My AI-related technical interests include: ${USER_INTERESTS}
+
+Here are ${papers.length} recent arXiv papers. Select the ${targetCount} most relevant ones - papers that introduce important new ideas I would enjoy or learn from. Prefer diversity across subfields.
+
+${paperList}
+
+Respond with JSON: {"indices": [0, 3, 7, ...]}`
+        }
+      ],
+      max_completion_tokens: 300,
+      response_format: { type: 'json_object' }
+    })
+
+    const content = completion.choices[0]?.message?.content
+    if (!content) return papers.slice(0, targetCount)
+
+    const parsed = JSON.parse(content)
+    const indices: number[] = parsed.indices || []
+
+    const filtered = indices
+      .filter(i => i >= 0 && i < papers.length)
+      .map(i => papers[i])
+
+    console.log(`Filtered ${papers.length} papers down to ${filtered.length}`)
+    return filtered.length > 0 ? filtered : papers.slice(0, targetCount)
+  } catch (error) {
+    console.error('Error filtering papers:', error)
+    return papers.slice(0, targetCount)
+  }
+}
+
 
 // Process paper with LLM to extract tag, question, and core idea
 async function processPaperWithLLM(paper: ArxivPaper): Promise<ProcessedPaper> {
@@ -124,35 +183,41 @@ async function processPaperWithLLM(paper: ArxivPaper): Promise<ProcessedPaper> {
       apiKey: process.env.OPENAI_API_KEY,
     })
 
-    const prompt = `Analyze this arXiv paper and extract the following information. This is for a literature review of LLM, symbolic AI, and related ML research.
+    // Fetch full content for richer analysis
+    const fullContent = await fetchPaperContent(paper.id)
+    const contentSection = fullContent
+      ? `\n\nPaper Content (excerpts):\n${fullContent}`
+      : ''
+
+    const prompt = `Analyze this arXiv paper and extract the following information.
 
 Paper Title: ${paper.title}
-Abstract: ${paper.abstract}
+Abstract: ${paper.abstract}${contentSection}
 
 Please provide:
 
-1. TAG: An extremely quick 1-2 word topic label (e.g., "interpretability", "inference", "synthetic data", "alignment"). Since these are all AI/ML papers, don't use generic tags like "AI" or "LLM" - be specific about the subfield.
+1. TAG: 1-2 word topic label specific to the ML subfield (e.g., "interpretability", "inference", "synthetic data", "alignment"). Since these are all AI/ML papers, avoid generic tags like "AI" or "LLM".
 
-2. QUESTION: Put yourself in the researchers' minds. Before they wrote this paper, what was the core question that motivated it? They were likely bumping up against the bounds of existing knowledge - what question extended beyond that boundary? Write in simple Grug-programmer style (like "Grug think big neural net better, but how make big neural net not break?"). Be specific, not generic.
+2. QUESTION: The core research question that motivated this paper. What question were the authors trying to answer? Write in simple Grug-programmer style (like "Grug think big neural net better, but how make big neural net not break?"). Be specific, not generic.
 
-3. ANSWER: The ONE core idea from the paper. Think of the ResNet example: the answer would be "learn f(x) + x instead of f(x)". Maximum information density - provide as much intuition as possible in a single sentence or fragment. Write in simple Grug-programmer style (like "Grug add skip connections so gradient flow better").
+3. ANSWER: The ONE core technical idea or finding from the paper. Maximum information density - like "learn f(x) + x instead of f(x)" for ResNet. Write in simple Grug-programmer style.
 
-4. BET: Research is opinionated - researchers bet on what works and what doesn't. What philosophical bet or assumption underlies this work? For GPT-2, the bet might be "scaling beats handcrafted algorithmic advances". Write in simple Grug-programmer style (like "Grug think more data always better than clever algorithm").
+4. BET: The philosophical bet or assumption underlying this work. What belief about what works/doesn't work does this research reflect? Write in simple Grug-programmer style.
 
-Format your response as JSON:
+Format as JSON:
 {
   "tag": "topic",
-  "question": "Grug wonder: specific research question in simple terms?",
-  "answer": "Grug solve by: core technical idea in simple terms",
-  "bet": "Grug believe: philosophical assumption in simple terms"
+  "question": "Grug wonder: ...",
+  "answer": "Grug solve by: ...",
+  "bet": "Grug believe: ..."
 }
 
-Be concrete, specific, and information-dense. Write like Grug programmer - simple, direct, caveman-style language. Avoid generic statements.`
+Be concrete, specific, and information-dense. Avoid generic statements.`
 
     console.log('Making OpenAI API call for paper:', paper.title)
 
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: 'gpt-5.2',
       messages: [
         {
           role: 'system',
@@ -163,7 +228,7 @@ Be concrete, specific, and information-dense. Write like Grug programmer - simpl
           content: prompt
         }
       ],
-      max_completion_tokens: 300,
+      max_completion_tokens: 600,
       response_format: { type: 'json_object' }
     })
 
@@ -189,10 +254,6 @@ Be concrete, specific, and information-dense. Write like Grug programmer - simpl
       }
     }
 
-    // Fetch full paper content (commented out for faster initial loading)
-    // console.log(`Fetching full content for ${paper.id}...`)
-    // const fullContent = await fetchFullPaperContent(paper.id)
-    
     return {
       ...paper,
       tag,
@@ -203,11 +264,11 @@ Be concrete, specific, and information-dense. Write like Grug programmer - simpl
     }
   } catch (error) {
     console.error('Error processing paper with LLM:', paper.title, error)
-    if (error.response) {
-      console.error('OpenAI API Error Response:', error.response.status, error.response.data)
+    if ((error as any).response) {
+      console.error('OpenAI API Error Response:', (error as any).response.status, (error as any).response.data)
     }
   }
-  
+
   return {
     ...paper,
     tag: 'ML research',
@@ -218,25 +279,30 @@ Be concrete, specific, and information-dense. Write like Grug programmer - simpl
   }
 }
 
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
     const limit = parseInt(searchParams.get('limit') || '30')
     const offset = parseInt(searchParams.get('offset') || '0')
-    
-    // Fetch papers from arXiv with expanded search
-    const papers = await searchArxivPapers(limit, offset)
-    
-    // Process each paper with LLM (in parallel for efficiency, but limit concurrency)
+
+    // Fetch a larger pool from arXiv so the filter has enough to choose from
+    const fetchCount = Math.max(limit * 3, 50)
+    const papers = await searchArxivPapers(fetchCount, offset)
+
+    // Filter to the most relevant papers using LLM
+    const relevantPapers = await filterRelevantPapers(papers, limit)
+
+    // Process each filtered paper with LLM (in parallel)
     const processedPapers = await Promise.all(
-      papers.map(paper => processPaperWithLLM(paper))
+      relevantPapers.map(paper => processPaperWithLLM(paper))
     )
-    
+
     return NextResponse.json({
       papers: processedPapers,
       total: processedPapers.length,
       offset,
-      hasMore: processedPapers.length >= limit,
+      hasMore: papers.length >= fetchCount,
       categories: ['cs.AI', 'cs.LG', 'cs.CL', 'cs.CV', 'cs.NE', 'stat.ML', 'cs.IR', 'cs.HC', 'cs.CR']
     })
   } catch (error) {
