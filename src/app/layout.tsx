@@ -14,19 +14,19 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "GrugTok - Research Papers, Grug Style",
-  description: "TikTok-style interface for browsing ML research papers with simple Grug explanations. Swipe through the latest arXiv papers.",
-  keywords: ["GrugTok", "arXiv", "research papers", "ML", "AI", "TikTok", "Grug", "machine learning"],
-  authors: [{ name: "GrugTok Team" }],
+  title: "TLDRxiv",
+  description: "Scroll through today's ML research in bite-sized cards. Key question, core idea, and the bet behind each paper.",
+  keywords: ["TLDRxiv", "arXiv", "research papers", "ML", "AI", "machine learning", "tl;dr"],
+  authors: [{ name: "TLDRxiv" }],
   openGraph: {
-    title: "GrugTok",
-    description: "Research papers, Grug style",
+    title: "TLDRxiv",
+    description: "Today's ML research, one idea at a time",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "GrugTok",
-    description: "Research papers, Grug style",
+    title: "TLDRxiv",
+    description: "Today's ML research, one idea at a time",
   },
 };
 

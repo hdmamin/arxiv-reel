@@ -244,7 +244,7 @@ export default function Home() {
       <div className="absolute top-0 left-0 right-0 z-20 p-4 bg-gradient-to-b from-background/80 to-transparent">
         <div className="flex justify-between items-center max-w-4xl mx-auto">
           <div>
-            <h1 className="text-2xl font-bold">GrugTok</h1>
+            <h1 className="text-2xl font-bold">TLDRxiv</h1>
             <p className="text-xs text-muted-foreground mt-1">
               ↑↓ Navigate | Space Flip | B Bookmark | R Refresh | ESC Back
             </p>
