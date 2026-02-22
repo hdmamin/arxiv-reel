@@ -14,8 +14,8 @@ interface ArxivPaper {
 interface ProcessedPaper extends ArxivPaper {
   tag?: string
   question?: string
-  answer?: string
-  bet?: string
+  thesis?: string
+  method?: string
 }
 
 const TOPIC_TAGS = [
@@ -238,10 +238,10 @@ Abstract: ${paper.abstract}${contentSection}
 
 1. TAG: 1-2 word subfield label (e.g., "interpretability", "speculative decoding", "synthetic data"). Not "AI" or "LLM".
 2. QUESTION: What specific question were the authors trying to answer?
-3. CORE IDEA: The one key insight. Think "learn f(x)+x instead of f(x)" for ResNet.
-4. BET: What controversial or opinionated assumption underlies this work?
+3. THESIS: The belief about the world that motivated this work. This is NOT a summary of the paper - it's the pre-existing conviction that led the researchers to pursue this approach in the first place. It should be something you could disagree with. Think "why this approach?" not "what did they do?" For ResNet: "Deeper is better if you can get gradients to flow."
+4. METHOD: The specific technical trick that operationalizes the thesis. The "how." For ResNet: "Learn f(x)+x instead of f(x) — each layer learns a small correction."
 
-{"tag": "...", "question": "...", "answer": "...", "bet": "..."}`
+{"tag": "...", "question": "...", "thesis": "...", "method": "..."}`
 
     console.log('Making OpenAI API call for paper:', paper.title)
 
@@ -268,10 +268,10 @@ Abstract: ${paper.abstract}${contentSection}
             properties: {
               tag: { type: 'string', enum: [...TOPIC_TAGS] },
               question: { type: 'string' },
-              answer: { type: 'string' },
-              bet: { type: 'string' }
+              thesis: { type: 'string' },
+              method: { type: 'string' }
             },
-            required: ['tag', 'question', 'answer', 'bet'],
+            required: ['tag', 'question', 'thesis', 'method'],
             additionalProperties: false
           }
         }
@@ -282,19 +282,18 @@ Abstract: ${paper.abstract}${contentSection}
     console.log('LLM Response for paper:', paper.title, '->', responseContent)
 
     let tag = 'ML research'
-    let question = 'Q: Research question not extracted'
-    let answer = 'A: Core idea not extracted'
-    let bet = 'Philosophical assumption not extracted'
+    let question = ''
+    let thesis = ''
+    let method = ''
 
     if (responseContent) {
       try {
-        // Clean up the response to ensure it's valid JSON
         const cleanResponse = responseContent.replace(/```json\n?|\n?```/g, '').trim()
         const extracted = JSON.parse(cleanResponse)
         tag = extracted.tag || 'ML research'
-        question = extracted.question || 'Q: Research question not extracted'
-        answer = extracted.answer || 'A: Core idea not extracted'
-        bet = extracted.bet || 'Philosophical assumption not extracted'
+        question = extracted.question || ''
+        thesis = extracted.thesis || ''
+        method = extracted.method || ''
       } catch (parseError) {
         console.error('Error parsing LLM response:', parseError, 'Response was:', responseContent)
       }
@@ -304,9 +303,9 @@ Abstract: ${paper.abstract}${contentSection}
       ...paper,
       tag,
       question,
-      answer,
-      bet,
-      content: '' // Will be fetched on demand
+      thesis,
+      method,
+      content: ''
     }
   } catch (error) {
     console.error('Error processing paper with LLM:', paper.title, error)
@@ -318,9 +317,9 @@ Abstract: ${paper.abstract}${contentSection}
   return {
     ...paper,
     tag: 'ML research',
-    question: 'Q: Research question not extracted',
-    answer: 'A: Core idea not extracted',
-    bet: 'Philosophical assumption not extracted',
+    question: '',
+    thesis: '',
+    method: '',
     content: ''
   }
 }

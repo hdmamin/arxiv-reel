@@ -15,8 +15,8 @@ interface Paper {
   publishedAt: string
   tag?: string
   question?: string
-  answer?: string
-  bet?: string
+  thesis?: string
+  method?: string
   content?: string
 }
 
@@ -53,11 +53,11 @@ export default function Home() {
   const fetchPapers = useCallback(async () => {
     setIsLoading(true)
     try {
-      const response = await fetch('/api/papers?limit=10')
+      const response = await fetch('/api/papers?limit=3')
       if (!response.ok) throw new Error('Failed to fetch papers')
       const data = await response.json()
       setPapers(data.papers)
-      setHasMore(data.papers.length >= 10) // If we got 10 papers, there might be more
+      setHasMore(data.papers.length >= 3)
     } catch (error) {
       console.error('Error fetching papers:', error)
     } finally {
@@ -313,22 +313,22 @@ export default function Home() {
                     </div>
                   )}
 
-                  {/* Answer (Core Idea) */}
-                  {currentPaper.answer && (
+                  {/* Thesis (Why) */}
+                  {currentPaper.thesis && (
                     <div className="text-center">
-                      <h3 className="text-sm font-semibold mb-2 text-muted-foreground uppercase tracking-wide">Answer</h3>
-                      <p className="text-2xl font-bold text-primary leading-relaxed">
-                        {currentPaper.answer}
+                      <h3 className="text-sm font-semibold mb-2 text-muted-foreground uppercase tracking-wide">Thesis</h3>
+                      <p className="text-lg text-muted-foreground leading-relaxed">
+                        {currentPaper.thesis}
                       </p>
                     </div>
                   )}
 
-                  {/* Bet (Philosophical Assumption) */}
-                  {currentPaper.bet && (
+                  {/* Method (How) */}
+                  {currentPaper.method && (
                     <div className="text-center">
-                      <h3 className="text-sm font-semibold mb-2 text-muted-foreground uppercase tracking-wide">Bet</h3>
-                      <p className="text-lg text-muted-foreground leading-relaxed">
-                        {currentPaper.bet}
+                      <h3 className="text-sm font-semibold mb-2 text-muted-foreground uppercase tracking-wide">Method</h3>
+                      <p className="text-2xl font-bold text-primary leading-relaxed">
+                        {currentPaper.method}
                       </p>
                     </div>
                   )}
