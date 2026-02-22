@@ -388,7 +388,7 @@ export default function Home() {
                       {currentPaper.question && (
                         <div className="text-center">
                           <h3 className="text-sm font-semibold mb-2 text-muted-foreground uppercase tracking-wide">Question</h3>
-                          <p className="text-xl text-muted-foreground italic leading-relaxed">
+                          <p className="text-2xl font-bold text-primary italic leading-relaxed">
                             {currentPaper.question}
                           </p>
                         </div>
@@ -521,7 +521,7 @@ export default function Home() {
                       {currentPaper.question && (
                         <div className="text-center">
                           <h3 className="text-sm font-semibold mb-2 text-muted-foreground uppercase tracking-wide">Question</h3>
-                          <p className="text-xl text-muted-foreground italic leading-relaxed">
+                          <p className="text-2xl font-bold text-primary italic leading-relaxed">
                             {currentPaper.question}
                           </p>
                         </div>
@@ -531,7 +531,7 @@ export default function Home() {
                       {currentPaper.thesis && (
                         <div className="text-center">
                           <h3 className="text-sm font-semibold mb-2 text-muted-foreground uppercase tracking-wide">Thesis</h3>
-                          <p className="text-lg text-muted-foreground leading-relaxed">
+                          <p className="text-2xl font-bold text-primary leading-relaxed">
                             {currentPaper.thesis}
                           </p>
                         </div>
