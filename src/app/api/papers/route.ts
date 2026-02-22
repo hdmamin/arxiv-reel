@@ -144,9 +144,9 @@ async function filterRelevantPapers(papers: ArxivPaper[], targetCount: number): 
 
     console.log(`Filtering ${papers.length} papers down to ~${targetCount}...`)
 
-    const completion = await openai.chat.completions.create({
+    const response = await openai.responses.create({
       model: 'gpt-5.2',
-      messages: [
+      input: [
         {
           role: 'system',
           content: 'You are a helpful research assistant. Your job is to review recent arxiv publications from the fields of AI and Computer Science and select relevant readings based on the user\'s interests. Focus on ambitious or transformational work, not incremental improvements.'
@@ -164,11 +164,13 @@ ${paperList}
 Respond with JSON: {"indices": [0, 3, 7, ...]}`
         }
       ],
-      max_completion_tokens: 300,
-      response_format: { type: 'json_object' }
+      text: {
+        verbosity: 'low',
+        format: { type: 'json_object' }
+      }
     })
 
-    const content = completion.choices[0]?.message?.content
+    const content = response.output_text
     if (!content) return papers.slice(0, targetCount)
 
     const parsed = JSON.parse(content)
@@ -229,9 +231,9 @@ Be concrete and specific. Every word should carry information.`
 
     console.log('Making OpenAI API call for paper:', paper.title)
 
-    const completion = await openai.chat.completions.create({
+    const response = await openai.responses.create({
       model: 'gpt-5.2',
-      messages: [
+      input: [
         {
           role: 'system',
           content: 'You are an expert at analyzing research papers and extracting key insights. Always respond with valid JSON only.'
@@ -241,11 +243,13 @@ Be concrete and specific. Every word should carry information.`
           content: prompt
         }
       ],
-      max_completion_tokens: 600,
-      response_format: { type: 'json_object' }
+      text: {
+        verbosity: 'low',
+        format: { type: 'json_object' }
+      }
     })
 
-    const responseContent = completion.choices[0]?.message?.content
+    const responseContent = response.output_text
     console.log('LLM Response for paper:', paper.title, '->', responseContent)
 
     let tag = 'ML research'
