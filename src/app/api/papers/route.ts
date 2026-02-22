@@ -18,6 +18,21 @@ interface ProcessedPaper extends ArxivPaper {
   bet?: string
 }
 
+const TOPIC_TAGS = [
+  'synthetic data',
+  'post-training/alignment',
+  'information retrieval/search',
+  'embeddings',
+  'interpretability',
+  'program search/synthesis',
+  'low-latency generation',
+  'code generation',
+  'agents/tool use',
+  'evaluation/verification',
+  'human-AI collaboration',
+  'AI in society',
+] as const
+
 const USER_INTERESTS = `synthetic data, post-training/alignment methods, information retrieval/search, embeddings, interpretability (mechanistic interpretability, representation engineering - understanding what models learn and why), program search/synthesis (using search or learning to write programs as a way to solve problems), low-latency LLM generation (radical 100-1000x speedups like speculative decoding or new architectures, NOT incremental training or optimizer improvements), code generation, agents and tool use, evaluation/verification (especially where ground truth is hard to obtain), new modes of human-AI collaboration and UX for scientific computing, AI's impact on and role in society.
 
 NOT interested in: training optimizer tweaks (Adam variants, learning rate schedules, gradient flow improvements, convergence speedups), incremental model architecture changes (yet another attention variant), standard benchmark improvements without new ideas, differential privacy, pure fairness/ethics frameworks without technical novelty.`
@@ -251,7 +266,7 @@ Abstract: ${paper.abstract}${contentSection}
           schema: {
             type: 'object',
             properties: {
-              tag: { type: 'string' },
+              tag: { type: 'string', enum: [...TOPIC_TAGS] },
               question: { type: 'string' },
               answer: { type: 'string' },
               bet: { type: 'string' }
