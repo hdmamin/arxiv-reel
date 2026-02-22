@@ -348,7 +348,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       papers: processedPapers,
       total: processedPapers.length,
-      offset,
       hasMore: papers.length >= fetchCount,
       categories: ['cs.AI', 'cs.LG', 'cs.CL', 'cs.CV', 'cs.NE', 'stat.ML', 'cs.IR', 'cs.HC', 'cs.CR']
     })
