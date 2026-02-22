@@ -237,7 +237,7 @@ Paper Title: ${paper.title}
 Abstract: ${paper.abstract}${contentSection}
 
 1. TAG: 1-2 word subfield label (e.g., "interpretability", "speculative decoding", "synthetic data"). Not "AI" or "LLM".
-2. QUESTION: What specific question were the authors trying to answer?
+2. QUESTION: Frame the core problem or tension as an open-ended question. NOT "can X do Y?" or "is X possible?" — instead frame it as "how should we...", "what's the best way to...", or "why does X happen?" The reader should be able to form their own thesis in response. For ResNet: "How do you train a 100+ layer net without gradients vanishing?"
 3. THESIS: The belief about the world that motivated this work. This is NOT a summary of the paper - it's the pre-existing conviction that led the researchers to pursue this approach in the first place. It should be something you could disagree with. Think "why this approach?" not "what did they do?" For ResNet: "Deeper is better if you can get gradients to flow."
 4. METHOD: The specific technical trick that operationalizes the thesis. The "how." For ResNet: "Learn f(x)+x instead of f(x) — each layer learns a small correction."
 
