@@ -199,8 +199,14 @@ export default function Home() {
   const handleScroll = (direction: 'up' | 'down') => {
     if (direction === 'up' && currentIndex > 0) {
       setCurrentIndex(currentIndex - 1)
-    } else if (direction === 'down' && currentIndex < papers.length - 1) {
-      setCurrentIndex(currentIndex + 1)
+    } else if (direction === 'down') {
+      if (currentIndex < papers.length - 1) {
+        setCurrentIndex(currentIndex + 1)
+      }
+      // Auto-fetch more when near the end
+      if (currentIndex >= papers.length - 2 && hasMore && !loadingMore) {
+        fetchMorePapers()
+      }
     }
     setIsFlipped(false)
     setActiveStage(1)
