@@ -204,30 +204,17 @@ async function processPaperWithLLM(paper: ArxivPaper): Promise<ProcessedPaper> {
       ? `\n\nPaper Content (excerpts):\n${fullContent}`
       : ''
 
-    const prompt = `Analyze this arXiv paper and extract the following. The reader is an ML engineer quickly scanning papers like TikToks - each field should be a short, plain-language nugget they can absorb in seconds. No jargon where a simpler phrase works, but don't dumb down the actual idea.
+    const prompt = `Extract 4 fields from this paper. Each field must be ONE short sentence - something you can read in under 3 seconds. Plain language, no jargon, but don't lose the actual idea.
 
 Paper Title: ${paper.title}
 Abstract: ${paper.abstract}${contentSection}
 
-Extract:
+1. TAG: 1-2 word subfield label (e.g., "interpretability", "speculative decoding", "synthetic data"). Not "AI" or "LLM".
+2. QUESTION: What specific question were the authors trying to answer?
+3. CORE IDEA: The one key insight. Think "learn f(x)+x instead of f(x)" for ResNet.
+4. BET: What controversial or opinionated assumption underlies this work?
 
-1. TAG: 1-2 word topic label specific to the subfield (e.g., "interpretability", "speculative decoding", "synthetic data", "RLHF"). Avoid generic tags like "AI" or "LLM".
-
-2. QUESTION: One sentence - the core question the researchers were trying to answer. Be specific to THIS paper, not the field in general.
-
-3. CORE IDEA: The one key insight or finding, stated as concisely as possible. Think "learn f(x)+x instead of f(x)" for ResNet - maximum information density in minimum words. If the reader remembers nothing else, this is what should stick.
-
-4. BET: What opinionated assumption does this work make? What do the authors believe that not everyone agrees on? One sentence.
-
-Format as JSON:
-{
-  "tag": "topic",
-  "question": "...",
-  "answer": "...",
-  "bet": "..."
-}
-
-Be concrete and specific. Every word should carry information.`
+{"tag": "...", "question": "...", "answer": "...", "bet": "..."}`
 
     console.log('Making OpenAI API call for paper:', paper.title)
 
