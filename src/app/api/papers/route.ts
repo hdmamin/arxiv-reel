@@ -329,11 +329,13 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
     const limit = parseInt(searchParams.get('limit') || '30')
-    const offset = parseInt(searchParams.get('offset') || '0')
+    const excludeParam = searchParams.get('exclude') || ''
+    const excludeIds = new Set(excludeParam ? excludeParam.split(',') : [])
 
     // Fetch a larger pool from arXiv so the filter has enough to choose from
     const fetchCount = Math.max(limit * 3, 50)
-    const papers = await searchArxivPapers(fetchCount, offset)
+    const allPapers = await searchArxivPapers(fetchCount + excludeIds.size)
+    const papers = allPapers.filter(p => !excludeIds.has(p.id))
 
     // Filter to the most relevant papers using LLM
     const relevantPapers = await filterRelevantPapers(papers, limit)

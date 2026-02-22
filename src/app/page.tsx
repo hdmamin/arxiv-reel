@@ -70,8 +70,8 @@ export default function Home() {
       const response = await fetch('/api/papers?limit=3')
       if (!response.ok) throw new Error('Failed to fetch papers')
       const data = await response.json()
-      setPapers(data.papers)
-      setHasMore(data.papers.length >= 3)
+      setPapers(data.papers || [])
+      setHasMore((data.papers || []).length >= 3)
     } catch (error) {
       console.error('Error fetching papers:', error)
     } finally {
@@ -84,8 +84,8 @@ export default function Home() {
     
     setLoadingMore(true)
     try {
-      const currentLength = papers.length
-      const response = await fetch(`/api/papers?limit=20&offset=${currentLength}`)
+      const seenIds = papers.map(p => p.id).join(',')
+      const response = await fetch(`/api/papers?limit=20&exclude=${encodeURIComponent(seenIds)}`)
       if (!response.ok) throw new Error('Failed to fetch more papers')
       const data = await response.json()
       
