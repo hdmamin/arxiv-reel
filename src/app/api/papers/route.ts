@@ -251,7 +251,7 @@ Abstract: ${paper.abstract}${contentSection}
         const extracted = JSON.parse(cleanResponse)
         tag = extracted.tag || 'ML research'
         question = extracted.question || 'Q: Research question not extracted'
-        answer = extracted.answer || 'A: Core idea not extracted'
+        answer = extracted.answer || extracted.core_idea || 'A: Core idea not extracted'
         bet = extracted.bet || 'Philosophical assumption not extracted'
       } catch (parseError) {
         console.error('Error parsing LLM response:', parseError, 'Response was:', responseContent)
