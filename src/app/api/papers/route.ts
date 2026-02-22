@@ -166,7 +166,19 @@ Respond with JSON: {"indices": [0, 3, 7, ...]}`
       ],
       text: {
         verbosity: 'low',
-        format: { type: 'json_object' }
+        format: {
+          type: 'json_schema',
+          name: 'paper_filter',
+          strict: true,
+          schema: {
+            type: 'object',
+            properties: {
+              indices: { type: 'array', items: { type: 'integer' } }
+            },
+            required: ['indices'],
+            additionalProperties: false
+          }
+        }
       }
     })
 
@@ -174,7 +186,7 @@ Respond with JSON: {"indices": [0, 3, 7, ...]}`
     if (!content) return papers.slice(0, targetCount)
 
     const parsed = JSON.parse(content)
-    const indices: number[] = parsed.indices || []
+    const indices: number[] = parsed.indices
 
     const filtered = indices
       .filter(i => i >= 0 && i < papers.length)
@@ -232,7 +244,22 @@ Abstract: ${paper.abstract}${contentSection}
       ],
       text: {
         verbosity: 'low',
-        format: { type: 'json_object' }
+        format: {
+          type: 'json_schema',
+          name: 'paper_extraction',
+          strict: true,
+          schema: {
+            type: 'object',
+            properties: {
+              tag: { type: 'string' },
+              question: { type: 'string' },
+              answer: { type: 'string' },
+              bet: { type: 'string' }
+            },
+            required: ['tag', 'question', 'answer', 'bet'],
+            additionalProperties: false
+          }
+        }
       }
     })
 
@@ -251,7 +278,7 @@ Abstract: ${paper.abstract}${contentSection}
         const extracted = JSON.parse(cleanResponse)
         tag = extracted.tag || 'ML research'
         question = extracted.question || 'Q: Research question not extracted'
-        answer = extracted.answer || extracted.core_idea || 'A: Core idea not extracted'
+        answer = extracted.answer || 'A: Core idea not extracted'
         bet = extracted.bet || 'Philosophical assumption not extracted'
       } catch (parseError) {
         console.error('Error parsing LLM response:', parseError, 'Response was:', responseContent)
