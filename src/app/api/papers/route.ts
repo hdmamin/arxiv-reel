@@ -18,7 +18,9 @@ interface ProcessedPaper extends ArxivPaper {
   bet?: string
 }
 
-const USER_INTERESTS = `synthetic data, post-training/alignment methods, information retrieval/search, embeddings, interpretability (e.g. mechanistic interpretability, representation engineering, etc), program search, low latency language generation (not talking about incremental speedups, more like things that could provide a 100-1000x speedup), program synthesis, code generation, agents and tool use, evaluation/verification particularly in domains where ground truth is hard to obtain, new modes of human-AI collaboration and new UX for scientific computing, AI impact on and role in society`
+const USER_INTERESTS = `synthetic data, post-training/alignment methods, information retrieval/search, embeddings, interpretability (mechanistic interpretability, representation engineering - understanding what models learn and why), program search/synthesis (using search or learning to write programs as a way to solve problems), low-latency LLM generation (radical 100-1000x speedups like speculative decoding or new architectures, NOT incremental training or optimizer improvements), code generation, agents and tool use, evaluation/verification (especially where ground truth is hard to obtain), new modes of human-AI collaboration and UX for scientific computing, AI's impact on and role in society.
+
+NOT interested in: training optimizer tweaks (Adam variants, learning rate schedules, gradient flow improvements, convergence speedups), incremental model architecture changes (yet another attention variant), standard benchmark improvements without new ideas, differential privacy, pure fairness/ethics frameworks without technical novelty.`
 
 
 // Fetch paper content from arXiv HTML for deeper analysis
@@ -142,9 +144,11 @@ async function filterRelevantPapers(papers: ArxivPaper[], targetCount: number): 
         },
         {
           role: 'user',
-          content: `My AI-related technical interests include: ${USER_INTERESTS}
+          content: `My AI-related technical interests:
 
-Here are ${papers.length} recent arXiv papers. Select the ${targetCount} most relevant ones - papers that introduce important new ideas I would enjoy or learn from. Prefer diversity across subfields.
+${USER_INTERESTS}
+
+Here are ${papers.length} recent arXiv papers. Select the ${targetCount} most relevant ones. I want papers that introduce genuinely new ideas or directions - things that shift how we think about a problem. Be strict: if a paper is just an incremental improvement or doesn't clearly connect to my interests, skip it. When in doubt about whether something matches an interest, consider whether I'd learn a new *idea* from it vs. just a new *result*. Prefer diversity across subfields.
 
 ${paperList}
 
@@ -189,30 +193,30 @@ async function processPaperWithLLM(paper: ArxivPaper): Promise<ProcessedPaper> {
       ? `\n\nPaper Content (excerpts):\n${fullContent}`
       : ''
 
-    const prompt = `Analyze this arXiv paper and extract the following information.
+    const prompt = `Analyze this arXiv paper and extract the following. The reader is an ML engineer quickly scanning papers like TikToks - each field should be a short, plain-language nugget they can absorb in seconds. No jargon where a simpler phrase works, but don't dumb down the actual idea.
 
 Paper Title: ${paper.title}
 Abstract: ${paper.abstract}${contentSection}
 
-Please provide:
+Extract:
 
-1. TAG: 1-2 word topic label specific to the ML subfield (e.g., "interpretability", "inference", "synthetic data", "alignment"). Since these are all AI/ML papers, avoid generic tags like "AI" or "LLM".
+1. TAG: 1-2 word topic label specific to the subfield (e.g., "interpretability", "speculative decoding", "synthetic data", "RLHF"). Avoid generic tags like "AI" or "LLM".
 
-2. QUESTION: The core research question that motivated this paper. What question were the authors trying to answer? Write in simple Grug-programmer style (like "Grug think big neural net better, but how make big neural net not break?"). Be specific, not generic.
+2. QUESTION: One sentence - the core question the researchers were trying to answer. Be specific to THIS paper, not the field in general.
 
-3. ANSWER: The ONE core technical idea or finding from the paper. Maximum information density - like "learn f(x) + x instead of f(x)" for ResNet. Write in simple Grug-programmer style.
+3. CORE IDEA: The one key insight or finding, stated as concisely as possible. Think "learn f(x)+x instead of f(x)" for ResNet - maximum information density in minimum words. If the reader remembers nothing else, this is what should stick.
 
-4. BET: The philosophical bet or assumption underlying this work. What belief about what works/doesn't work does this research reflect? Write in simple Grug-programmer style.
+4. BET: What opinionated assumption does this work make? What do the authors believe that not everyone agrees on? One sentence.
 
 Format as JSON:
 {
   "tag": "topic",
-  "question": "Grug wonder: ...",
-  "answer": "Grug solve by: ...",
-  "bet": "Grug believe: ..."
+  "question": "...",
+  "answer": "...",
+  "bet": "..."
 }
 
-Be concrete, specific, and information-dense. Avoid generic statements.`
+Be concrete and specific. Every word should carry information.`
 
     console.log('Making OpenAI API call for paper:', paper.title)
 
