@@ -238,6 +238,42 @@ export default function Home() {
     setIsFlipped(!isFlipped)
   }
 
+  const handleStageSubmit = async () => {
+    if (activeStage === 1) {
+      if (!thesisGuess.trim()) return
+      setActiveStage(2)
+    } else if (activeStage === 2) {
+      if (!methodGuess.trim()) return
+      setActiveStage(3)
+      setLoadingFeedback(true)
+      try {
+        const response = await fetch('/api/feedback', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            question: currentPaper?.question,
+            thesisGuess,
+            methodGuess,
+            realThesis: currentPaper?.thesis,
+            realMethod: currentPaper?.method,
+          }),
+        })
+        if (response.ok) {
+          const data = await response.json()
+          setFeedback({
+            thesisFeedback: data.thesis_feedback,
+            methodFeedback: data.method_feedback,
+            overall: data.overall,
+          })
+        }
+      } catch (error) {
+        console.error('Error fetching feedback:', error)
+      } finally {
+        setLoadingFeedback(false)
+      }
+    }
+  }
+
   const isBookmarked = currentPaper ? bookmarks.some(b => b.id === currentPaper.id) : false
 
   if (isLoading) {
@@ -332,56 +368,194 @@ export default function Home() {
               style={{ backfaceVisibility: 'hidden' }}
             >
               <CardContent className="p-8 h-full flex flex-col justify-between">
-                <div className="space-y-8">
-                  {/* Tag */}
-                  {currentPaper.tag && (
-                    <div className="flex justify-center">
-                      <span className={cn(
-                        "px-4 py-2 rounded-full text-base font-semibold",
-                        getTagColor(currentPaper.tag)
-                      )}>
-                        {currentPaper.tag}
-                      </span>
-                    </div>
-                  )}
+                {isActiveMode ? (
+                  /* Active mode: staged reveal */
+                  <>
+                    <div className="space-y-6 flex-1 overflow-y-auto">
+                      {/* Tag */}
+                      {currentPaper.tag && (
+                        <div className="flex justify-center">
+                          <span className={cn(
+                            "px-4 py-2 rounded-full text-base font-semibold",
+                            getTagColor(currentPaper.tag)
+                          )}>
+                            {currentPaper.tag}
+                          </span>
+                        </div>
+                      )}
 
-                  {/* Question */}
-                  {currentPaper.question && (
-                    <div className="text-center">
-                      <h3 className="text-sm font-semibold mb-2 text-muted-foreground uppercase tracking-wide">Question</h3>
-                      <p className="text-xl text-muted-foreground italic leading-relaxed">
-                        {currentPaper.question}
+                      {/* Question (always visible) */}
+                      {currentPaper.question && (
+                        <div className="text-center">
+                          <h3 className="text-sm font-semibold mb-2 text-muted-foreground uppercase tracking-wide">Question</h3>
+                          <p className="text-xl text-muted-foreground italic leading-relaxed">
+                            {currentPaper.question}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Stage 1: Guess the thesis */}
+                      {activeStage === 1 && (
+                        <div className="space-y-3">
+                          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide text-center">What&apos;s your thesis?</h3>
+                          <Textarea
+                            value={thesisGuess}
+                            onChange={(e) => setThesisGuess(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault()
+                                handleStageSubmit()
+                              }
+                            }}
+                            placeholder="What belief about the world motivated this work?"
+                            className="resize-none"
+                            rows={2}
+                            autoFocus
+                          />
+                          <p className="text-xs text-muted-foreground text-center">Press Enter to submit</p>
+                        </div>
+                      )}
+
+                      {/* Stage 2+3: Thesis comparison */}
+                      {activeStage >= 2 && (
+                        <div className="space-y-3">
+                          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide text-center">Thesis</h3>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <p className="text-xs font-medium text-muted-foreground mb-1">Yours</p>
+                              <p className="text-sm text-muted-foreground">{thesisGuess}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs font-medium text-primary mb-1">Actual</p>
+                              <p className="text-sm text-primary">{currentPaper.thesis}</p>
+                            </div>
+                          </div>
+                          {feedback && feedback.thesisFeedback && (
+                            <p className="text-xs text-muted-foreground italic border-l-2 border-primary/30 pl-3">{feedback.thesisFeedback}</p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Stage 2: Guess the method */}
+                      {activeStage === 2 && (
+                        <div className="space-y-3">
+                          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide text-center">Given this thesis, what method would you try?</h3>
+                          <Textarea
+                            value={methodGuess}
+                            onChange={(e) => setMethodGuess(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault()
+                                handleStageSubmit()
+                              }
+                            }}
+                            placeholder="How would you operationalize the thesis?"
+                            className="resize-none"
+                            rows={2}
+                            autoFocus
+                          />
+                          <p className="text-xs text-muted-foreground text-center">Press Enter to submit</p>
+                        </div>
+                      )}
+
+                      {/* Stage 3: Method comparison + feedback */}
+                      {activeStage === 3 && (
+                        <>
+                          <div className="space-y-3">
+                            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide text-center">Method</h3>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <p className="text-xs font-medium text-muted-foreground mb-1">Yours</p>
+                                <p className="text-sm text-muted-foreground">{methodGuess}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs font-medium text-primary mb-1">Actual</p>
+                                <p className="text-sm text-primary">{currentPaper.method}</p>
+                              </div>
+                            </div>
+                            {feedback && feedback.methodFeedback && (
+                              <p className="text-xs text-muted-foreground italic border-l-2 border-primary/30 pl-3">{feedback.methodFeedback}</p>
+                            )}
+                          </div>
+
+                          {loadingFeedback && (
+                            <div className="flex items-center justify-center py-4">
+                              <Loader2 className="h-5 w-5 animate-spin text-primary mr-2" />
+                              <span className="text-sm text-muted-foreground">Generating feedback...</span>
+                            </div>
+                          )}
+
+                          {feedback && feedback.overall && (
+                            <div className="text-center border-t pt-4">
+                              <p className="text-sm text-muted-foreground italic">{feedback.overall}</p>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+
+                    {/* Title hint at bottom */}
+                    <div className="text-center mt-4 pt-4 border-t">
+                      <p className="text-xs text-muted-foreground line-clamp-2">
+                        {currentPaper.title}
                       </p>
                     </div>
-                  )}
+                  </>
+                ) : (
+                  /* Passive mode: show all fields */
+                  <>
+                    <div className="space-y-8">
+                      {/* Tag */}
+                      {currentPaper.tag && (
+                        <div className="flex justify-center">
+                          <span className={cn(
+                            "px-4 py-2 rounded-full text-base font-semibold",
+                            getTagColor(currentPaper.tag)
+                          )}>
+                            {currentPaper.tag}
+                          </span>
+                        </div>
+                      )}
 
-                  {/* Thesis (Why) */}
-                  {currentPaper.thesis && (
-                    <div className="text-center">
-                      <h3 className="text-sm font-semibold mb-2 text-muted-foreground uppercase tracking-wide">Thesis</h3>
-                      <p className="text-lg text-muted-foreground leading-relaxed">
-                        {currentPaper.thesis}
+                      {/* Question */}
+                      {currentPaper.question && (
+                        <div className="text-center">
+                          <h3 className="text-sm font-semibold mb-2 text-muted-foreground uppercase tracking-wide">Question</h3>
+                          <p className="text-xl text-muted-foreground italic leading-relaxed">
+                            {currentPaper.question}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Thesis (Why) */}
+                      {currentPaper.thesis && (
+                        <div className="text-center">
+                          <h3 className="text-sm font-semibold mb-2 text-muted-foreground uppercase tracking-wide">Thesis</h3>
+                          <p className="text-lg text-muted-foreground leading-relaxed">
+                            {currentPaper.thesis}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Method (How) */}
+                      {currentPaper.method && (
+                        <div className="text-center">
+                          <h3 className="text-sm font-semibold mb-2 text-muted-foreground uppercase tracking-wide">Method</h3>
+                          <p className="text-2xl font-bold text-primary leading-relaxed">
+                            {currentPaper.method}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Title hint at bottom */}
+                    <div className="text-center mt-4 pt-4 border-t">
+                      <p className="text-xs text-muted-foreground line-clamp-2">
+                        {currentPaper.title}
                       </p>
                     </div>
-                  )}
-
-                  {/* Method (How) */}
-                  {currentPaper.method && (
-                    <div className="text-center">
-                      <h3 className="text-sm font-semibold mb-2 text-muted-foreground uppercase tracking-wide">Method</h3>
-                      <p className="text-2xl font-bold text-primary leading-relaxed">
-                        {currentPaper.method}
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Title hint at bottom */}
-                <div className="text-center mt-4 pt-4 border-t">
-                  <p className="text-xs text-muted-foreground line-clamp-2">
-                    {currentPaper.title}
-                  </p>
-                </div>
+                  </>
+                )}
               </CardContent>
             </Card>
 
