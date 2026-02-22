@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { ChevronUp, Bookmark, BookmarkCheck, Loader2, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { Switch } from '@/components/ui/switch'
+import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 
 interface Paper {
@@ -34,6 +36,18 @@ export default function Home() {
   const [loadingContent, setLoadingContent] = useState<string | null>(null)
   const [loadingMore, setLoadingMore] = useState(false)
   const [hasMore, setHasMore] = useState(true)
+
+  // Active mode state
+  const [isActiveMode, setIsActiveMode] = useState(false)
+  const [activeStage, setActiveStage] = useState<1 | 2 | 3>(1)
+  const [thesisGuess, setThesisGuess] = useState('')
+  const [methodGuess, setMethodGuess] = useState('')
+  const [feedback, setFeedback] = useState<{
+    thesisFeedback: string
+    methodFeedback: string
+    overall: string
+  } | null>(null)
+  const [loadingFeedback, setLoadingFeedback] = useState(false)
 
   // Load bookmarks from localStorage
   useEffect(() => {
@@ -91,6 +105,12 @@ export default function Home() {
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      const tag = (document.activeElement?.tagName || '').toLowerCase()
+      const inInput = tag === 'textarea' || tag === 'input'
+
+      // When typing in a textarea, only handle Escape
+      if (inInput && e.key !== 'Escape') return
+
       switch (e.key) {
         case 'ArrowUp':
         case 'k':
@@ -104,8 +124,10 @@ export default function Home() {
           break
         case ' ':
         case 'Enter':
-          e.preventDefault()
-          handleFlip()
+          if (!isActiveMode) {
+            e.preventDefault()
+            handleFlip()
+          }
           break
         case 'b':
         case 'B':
@@ -181,9 +203,14 @@ export default function Home() {
       setCurrentIndex(currentIndex + 1)
     }
     setIsFlipped(false)
+    setActiveStage(1)
+    setThesisGuess('')
+    setMethodGuess('')
+    setFeedback(null)
   }
 
   const handleFlip = async () => {
+    if (isActiveMode) return
     if (!isFlipped && currentPaper && !currentPaper.content && !loadingContent) {
       // Fetch full content when flipping for the first time
       setLoadingContent(currentPaper.id)
@@ -249,7 +276,22 @@ export default function Home() {
               ↑↓ Navigate | Space Flip | B Bookmark | R Refresh | ESC Back
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
+            <div className="flex items-center gap-2 mr-2">
+              <span className="text-xs text-muted-foreground">
+                {isActiveMode ? 'Active' : 'Passive'}
+              </span>
+              <Switch
+                checked={isActiveMode}
+                onCheckedChange={(checked) => {
+                  setIsActiveMode(checked)
+                  setActiveStage(1)
+                  setThesisGuess('')
+                  setMethodGuess('')
+                  setFeedback(null)
+                }}
+              />
+            </div>
             <Button
               variant={showBookmarks ? "default" : "outline"}
               size="sm"
