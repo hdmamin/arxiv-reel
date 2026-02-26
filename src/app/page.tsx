@@ -562,7 +562,7 @@ export default function Home() {
                       {/* Stage 2: Guess the method */}
                       {activeStage === 2 && (
                         <div className="space-y-3">
-                          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide text-center">Given this thesis, what method would you try?</h3>
+                          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide text-center">How would you operationalize your thesis?</h3>
                           <Textarea
                             value={methodGuess}
                             onChange={(e) => setMethodGuess(e.target.value)}
@@ -572,7 +572,7 @@ export default function Home() {
                                 handleStageSubmit()
                               }
                             }}
-                            placeholder="How would you operationalize the thesis?"
+                            placeholder="How would you operationalize your thesis?"
                             className="resize-none"
                             rows={2}
                             autoFocus
