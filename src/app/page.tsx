@@ -463,7 +463,11 @@ export default function Home() {
               transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
               transformStyle: 'preserve-3d'
             }}
-            onClick={handleFlip}
+            onClick={(e) => {
+              const tag = (e.target as HTMLElement).tagName.toLowerCase()
+              if (tag === 'textarea' || tag === 'input' || tag === 'button') return
+              handleFlip()
+            }}
           >
             {/* Front of card */}
             <Card 
