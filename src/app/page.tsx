@@ -1,11 +1,13 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { ChevronUp, Bookmark, BookmarkCheck, Loader2, RefreshCw } from 'lucide-react'
+import { useRef } from 'react'
+import { ChevronUp, Bookmark, BookmarkCheck, Loader2, RefreshCw, MessageCircle, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 
 interface Paper {
@@ -48,6 +50,13 @@ export default function Home() {
     overall: string
   } | null>(null)
   const [loadingFeedback, setLoadingFeedback] = useState(false)
+
+  // Chat state
+  const [showChat, setShowChat] = useState(false)
+  const [chatMessages, setChatMessages] = useState<{role: 'user' | 'assistant', content: string}[]>([])
+  const [chatInput, setChatInput] = useState('')
+  const [chatLoading, setChatLoading] = useState(false)
+  const chatScrollRef = useRef<HTMLDivElement>(null)
 
   // Load bookmarks from localStorage
   useEffect(() => {
@@ -136,6 +145,11 @@ export default function Home() {
             handleBookmark(currentPaper)
           }
           break
+        case 'c':
+        case 'C':
+          e.preventDefault()
+          setShowChat(prev => !prev)
+          break
         case 'r':
         case 'R':
           e.preventDefault()
@@ -143,7 +157,9 @@ export default function Home() {
           break
         case 'Escape':
           e.preventDefault()
-          if (showBookmarks) {
+          if (showChat) {
+            setShowChat(false)
+          } else if (showBookmarks) {
             setShowBookmarks(false)
             setCurrentIndex(0)
             setIsFlipped(false)
@@ -156,7 +172,7 @@ export default function Home() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [currentIndex, papers, bookmarks, isFlipped, showBookmarks, isActiveMode, fetchPapers])
+  }, [currentIndex, papers, bookmarks, isFlipped, showBookmarks, isActiveMode, showChat, fetchPapers])
 
   useEffect(() => {
     fetchPapers()
@@ -213,6 +229,9 @@ export default function Home() {
     setThesisGuess('')
     setMethodGuess('')
     setFeedback(null)
+    setShowChat(false)
+    setChatMessages([])
+    setChatInput('')
   }
 
   const handleFlip = async () => {
@@ -279,6 +298,85 @@ export default function Home() {
     }
   }
 
+  const ensurePaperContent = async (): Promise<string> => {
+    if (!currentPaper) return ''
+    if (currentPaper.content) return currentPaper.content
+    if (loadingContent) return ''
+    setLoadingContent(currentPaper.id)
+    try {
+      const response = await fetch(`/api/papers/${currentPaper.id}/content`)
+      if (response.ok) {
+        const data = await response.json()
+        if (showBookmarks) {
+          setBookmarks(bookmarks.map(p =>
+            p.id === currentPaper.id ? { ...p, content: data.content } : p
+          ))
+        } else {
+          setPapers(papers.map(p =>
+            p.id === currentPaper.id ? { ...p, content: data.content } : p
+          ))
+        }
+        return data.content || ''
+      }
+    } catch (error) {
+      console.error('Error fetching paper content:', error)
+    } finally {
+      setLoadingContent(null)
+    }
+    return ''
+  }
+
+  const sendChatMessage = async () => {
+    if (!chatInput.trim() || chatLoading || !currentPaper) return
+
+    const userMessage = { role: 'user' as const, content: chatInput.trim() }
+    const updatedMessages = [...chatMessages, userMessage]
+    setChatMessages(updatedMessages)
+    setChatInput('')
+    setChatLoading(true)
+    setShowChat(true)
+
+    // Ensure paper content is loaded for context
+    const paperContent = await ensurePaperContent()
+
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          paperId: currentPaper.id,
+          title: currentPaper.title,
+          abstract: currentPaper.abstract,
+          content: paperContent,
+          question: currentPaper.question,
+          thesis: currentPaper.thesis,
+          method: currentPaper.method,
+          thesisGuess: thesisGuess || undefined,
+          methodGuess: methodGuess || undefined,
+          feedback: feedback || undefined,
+          mode: isActiveMode ? 'active' : 'passive',
+          stage: isActiveMode ? activeStage : undefined,
+          messages: updatedMessages,
+        }),
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setChatMessages([...updatedMessages, { role: 'assistant', content: data.response }])
+      }
+    } catch (error) {
+      console.error('Error sending chat message:', error)
+    } finally {
+      setChatLoading(false)
+    }
+  }
+
+  // Auto-scroll chat to bottom when messages change
+  useEffect(() => {
+    if (chatScrollRef.current) {
+      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight
+    }
+  }, [chatMessages])
+
   const isBookmarked = currentPaper ? bookmarks.some(b => b.id === currentPaper.id) : false
 
   if (isLoading) {
@@ -314,7 +412,7 @@ export default function Home() {
           <div>
             <h1 className="text-2xl font-bold">TLDRxiv</h1>
             <p className="text-xs text-muted-foreground mt-1">
-              ↑↓ Navigate | Space Flip | B Bookmark | R Refresh | ESC Back
+              ↑↓ Navigate | Space Flip | C Chat | B Bookmark | R Refresh | ESC Back
             </p>
           </div>
           <div className="flex gap-2 items-center">
@@ -495,6 +593,23 @@ export default function Home() {
                               <p className="text-sm text-muted-foreground italic">{feedback.overall}</p>
                             </div>
                           )}
+
+                          {feedback && !showChat && (
+                            <div className="text-center pt-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-xs text-muted-foreground"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setShowChat(true)
+                                }}
+                              >
+                                <MessageCircle className="h-3 w-3 mr-1" />
+                                Continue chatting about this paper...
+                              </Button>
+                            </div>
+                          )}
                         </>
                       )}
                     </div>
@@ -639,6 +754,71 @@ export default function Home() {
         </div>
       </div>
 
+      {/* Chat Panel */}
+      {showChat && (
+        <div className="absolute bottom-24 left-0 right-0 z-30 px-4">
+          <div className="max-w-2xl mx-auto bg-background border rounded-lg shadow-lg flex flex-col max-h-[40vh]">
+            {/* Chat header */}
+            <div className="flex items-center justify-between px-4 py-2 border-b">
+              <p className="text-xs text-muted-foreground truncate flex-1 mr-2">
+                Chat: {currentPaper?.title}
+              </p>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0"
+                onClick={() => setShowChat(false)}
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
+
+            {/* Messages */}
+            <div ref={chatScrollRef} className="flex-1 overflow-y-auto p-4 space-y-3">
+              {chatMessages.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center italic">
+                  Ask anything about this paper...
+                </p>
+              )}
+              {chatMessages.map((msg, i) => (
+                <div key={i} className={cn(
+                  "max-w-[85%] text-sm rounded-lg px-3 py-2",
+                  msg.role === 'user'
+                    ? "ml-auto bg-primary text-primary-foreground"
+                    : "bg-muted"
+                )}>
+                  {msg.content}
+                </div>
+              ))}
+              {chatLoading && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Thinking...
+                </div>
+              )}
+            </div>
+
+            {/* Input */}
+            <div className="border-t p-3">
+              <Textarea
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault()
+                    sendChatMessage()
+                  }
+                }}
+                placeholder="Ask a question..."
+                className="resize-none text-sm"
+                rows={1}
+                autoFocus
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Navigation Controls */}
       <div className="absolute bottom-0 left-0 right-0 z-20 p-4 bg-gradient-to-t from-background/80 to-transparent">
         <div className="flex flex-col items-center gap-4">
@@ -662,6 +842,17 @@ export default function Home() {
           </div>
           
           <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation()
+                setShowChat(prev => !prev)
+              }}
+            >
+              <MessageCircle className={cn("h-5 w-5", showChat && "text-primary")} />
+            </Button>
+
             <Button
               variant="ghost"
               size="sm"
