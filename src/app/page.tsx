@@ -305,6 +305,25 @@ export default function Home() {
             methodFeedback: data.method_feedback,
             overall: data.overall,
           })
+
+          // Save interaction to database (non-blocking)
+          fetch('/api/interactions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              paperId: currentPaper?.id,
+              paperTitle: currentPaper?.title,
+              paperTag: currentPaper?.tag,
+              question: currentPaper?.question,
+              thesisGuess,
+              methodGuess,
+              realThesis: currentPaper?.thesis,
+              realMethod: currentPaper?.method,
+              thesisFeedback: data.thesis_feedback,
+              methodFeedback: data.method_feedback,
+              overallFeedback: data.overall,
+            }),
+          }).catch(err => console.error('Error saving interaction:', err))
         }
       } catch (error) {
         console.error('Error fetching feedback:', error)
