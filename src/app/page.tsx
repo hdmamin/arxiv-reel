@@ -216,7 +216,6 @@ export default function Home() {
   }
 
   const handleFlip = async () => {
-    if (isActiveMode) return
     if (!isFlipped && currentPaper && !currentPaper.content && !loadingContent) {
       // Fetch full content when flipping for the first time
       setLoadingContent(currentPaper.id)
