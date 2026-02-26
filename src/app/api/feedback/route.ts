@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
       input: [
         {
           role: 'system',
-          content: `You are a constructive research mentor. A user is practicing their scientific thinking by guessing a paper's thesis and method before seeing the real answers. Give brief, specific feedback that highlights what they got right, what they missed, and what the difference reveals about the research landscape. Be encouraging but honest. 2-3 sentences per field max.`
+          content: `You are a constructive research mentor. A user is practicing scientific thinking by proposing their own thesis and method for a research question, then comparing with what one paper actually did. The paper's approach is ONE valid path, not the ground truth — the user's idea may be equally valid, complementary, or address a different angle entirely. Evaluate the user's ideas on their own merits: are they coherent, creative, and well-reasoned? Then note what's interesting about the contrast with the paper's approach. 2-3 sentences per field max.`
         },
         {
           role: 'user',
@@ -27,7 +27,7 @@ Method (the specific technical approach):
 - User's guess: ${methodGuess}
 - Paper's actual method: ${realMethod}
 
-Give constructive feedback on each guess, then a short overall reflection on what the user can take away.`
+Evaluate each idea on its own merits, then reflect on what the contrast between the two approaches reveals.`
         }
       ],
       text: {
