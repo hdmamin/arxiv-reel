@@ -132,8 +132,14 @@ export default function Home() {
       const tag = (document.activeElement?.tagName || '').toLowerCase()
       const inInput = tag === 'textarea' || tag === 'input'
 
-      // When typing in a textarea, only handle Escape
-      if (inInput && e.key !== 'Escape') return
+      // When typing in a textarea: Escape blurs it, all other keys pass through
+      if (inInput) {
+        if (e.key === 'Escape') {
+          e.preventDefault()
+          ;(document.activeElement as HTMLElement)?.blur()
+        }
+        return
+      }
 
       switch (e.key) {
         case 'ArrowUp':
@@ -174,8 +180,6 @@ export default function Home() {
           } else if (showBookmarks) {
             setShowBookmarks(false)
             setCurrentIndex(0)
-            setIsFlipped(false)
-          } else if (isFlipped) {
             setIsFlipped(false)
           }
           break
@@ -526,7 +530,7 @@ export default function Home() {
                                 handleStageSubmit()
                               }
                             }}
-                            placeholder="What belief about the world motivated this work?"
+                            placeholder="If you were tackling this problem, what would your bet be?"
                             className="resize-none"
                             rows={2}
                             autoFocus
@@ -770,67 +774,65 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Chat Panel */}
+      {/* Chat Panel — right side */}
       {showChat && (
-        <div className="absolute bottom-24 left-0 right-0 z-30 px-4">
-          <div className="max-w-2xl mx-auto bg-background border rounded-lg shadow-lg flex flex-col max-h-[40vh]">
-            {/* Chat header */}
-            <div className="flex items-center justify-between px-4 py-2 border-b">
-              <p className="text-xs text-muted-foreground truncate flex-1 mr-2">
-                Chat: {currentPaper?.title}
+        <div className="fixed top-0 right-0 z-40 h-full w-[400px] border-l bg-background shadow-lg flex flex-col">
+          {/* Chat header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b">
+            <p className="text-xs text-muted-foreground truncate flex-1 mr-2">
+              {currentPaper?.title}
+            </p>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0"
+              onClick={() => setShowChat(false)}
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
+
+          {/* Messages */}
+          <div ref={chatScrollRef} className="flex-1 overflow-y-auto p-4 space-y-3">
+            {chatMessages.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center italic pt-8">
+                Ask anything about this paper...
               </p>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 w-6 p-0"
-                onClick={() => setShowChat(false)}
-              >
-                <X className="h-3 w-3" />
-              </Button>
-            </div>
+            )}
+            {chatMessages.map((msg, i) => (
+              <div key={i} className={cn(
+                "max-w-[85%] text-sm rounded-lg px-3 py-2",
+                msg.role === 'user'
+                  ? "ml-auto bg-primary text-primary-foreground"
+                  : "bg-muted"
+              )}>
+                {msg.content}
+              </div>
+            ))}
+            {chatLoading && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                Thinking...
+              </div>
+            )}
+          </div>
 
-            {/* Messages */}
-            <div ref={chatScrollRef} className="flex-1 overflow-y-auto p-4 space-y-3">
-              {chatMessages.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center italic">
-                  Ask anything about this paper...
-                </p>
-              )}
-              {chatMessages.map((msg, i) => (
-                <div key={i} className={cn(
-                  "max-w-[85%] text-sm rounded-lg px-3 py-2",
-                  msg.role === 'user'
-                    ? "ml-auto bg-primary text-primary-foreground"
-                    : "bg-muted"
-                )}>
-                  {msg.content}
-                </div>
-              ))}
-              {chatLoading && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                  Thinking...
-                </div>
-              )}
-            </div>
-
-            {/* Input */}
-            <div className="border-t p-3">
-              <Textarea
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault()
-                    sendChatMessage()
-                  }
-                }}
-                placeholder="Ask a question..."
-                className="resize-none text-sm"
-                rows={1}
-                autoFocus
-              />
-            </div>
+          {/* Input */}
+          <div className="border-t p-3">
+            <Textarea
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  sendChatMessage()
+                }
+              }}
+              placeholder="Ask a question..."
+              className="resize-none text-sm"
+              rows={2}
+              autoFocus
+            />
           </div>
         </div>
       )}
