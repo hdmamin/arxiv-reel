@@ -5,7 +5,7 @@ import { useRef } from 'react'
 import { ChevronUp, Bookmark, BookmarkCheck, Loader2, RefreshCw, MessageCircle, X, Copy, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Switch } from '@/components/ui/switch'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
@@ -39,8 +39,9 @@ export default function Home() {
   const [loadingMore, setLoadingMore] = useState(false)
   const [hasMore, setHasMore] = useState(true)
 
-  // Active mode state
-  const [isActiveMode, setIsActiveMode] = useState(false)
+  // Mode state
+  type Mode = 'passive' | 'active' | 'review'
+  const [mode, setMode] = useState<Mode>('passive')
   const [activeStage, setActiveStage] = useState<1 | 2 | 3>(1)
   const [thesisGuess, setThesisGuess] = useState('')
   const [methodGuess, setMethodGuess] = useState('')
@@ -188,7 +189,7 @@ export default function Home() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [currentIndex, papers, bookmarks, isFlipped, showBookmarks, isActiveMode, showChat, fetchPapers])
+  }, [currentIndex, papers, bookmarks, isFlipped, showBookmarks, mode, showChat, fetchPapers])
 
   useEffect(() => {
     fetchPapers()
@@ -389,8 +390,8 @@ export default function Home() {
           thesisGuess: thesisGuess || undefined,
           methodGuess: methodGuess || undefined,
           feedback: feedback || undefined,
-          mode: isActiveMode ? 'active' : 'passive',
-          stage: isActiveMode ? activeStage : undefined,
+          mode: mode === 'active' ? 'active' : 'passive',
+          stage: mode === 'active' ? activeStage : undefined,
           messages: updatedMessages,
         }),
       })
@@ -451,21 +452,21 @@ export default function Home() {
             </p>
           </div>
           <div className="flex gap-2 items-center">
-            <div className="flex items-center gap-2 mr-2">
-              <span className="text-xs text-muted-foreground">
-                {isActiveMode ? 'Active' : 'Passive'}
-              </span>
-              <Switch
-                checked={isActiveMode}
-                onCheckedChange={(checked) => {
-                  setIsActiveMode(checked)
-                  setActiveStage(1)
-                  setThesisGuess('')
-                  setMethodGuess('')
-                  setFeedback(null)
-                }}
-              />
-            </div>
+            <Tabs value={mode} onValueChange={(v) => {
+              setMode(v as Mode)
+              setActiveStage(1)
+              setThesisGuess('')
+              setMethodGuess('')
+              setFeedback(null)
+              setShowChat(false)
+              setChatMessages([])
+            }}>
+              <TabsList className="h-8">
+                <TabsTrigger value="passive" className="text-xs px-3">Passive</TabsTrigger>
+                <TabsTrigger value="active" className="text-xs px-3">Active</TabsTrigger>
+                <TabsTrigger value="review" className="text-xs px-3">Review</TabsTrigger>
+              </TabsList>
+            </Tabs>
             <Button
               variant={showBookmarks ? "default" : "outline"}
               size="sm"
@@ -510,7 +511,7 @@ export default function Home() {
               style={{ backfaceVisibility: 'hidden' }}
             >
               <CardContent className="p-8 h-full flex flex-col justify-between">
-                {isActiveMode ? (
+                {mode === 'active' ? (
                   /* Active mode: staged reveal */
                   <>
                     <div className="space-y-6 flex-1 overflow-y-auto">
