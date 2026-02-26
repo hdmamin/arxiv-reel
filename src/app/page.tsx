@@ -691,10 +691,15 @@ export default function Home() {
             }}
           >
             {/* Front of card */}
-            <Card 
+            <Card
               className="absolute inset-0 backface-hidden"
               style={{ backfaceVisibility: 'hidden' }}
             >
+              {isBookmarked && (
+                <div className="absolute top-0 right-4 z-10">
+                  <Bookmark className="h-6 w-6 fill-red-500 text-red-500" />
+                </div>
+              )}
               <CardContent className="p-8 h-full flex flex-col justify-between">
                 {mode === 'active' ? (
                   /* Active mode: staged reveal */
