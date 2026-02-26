@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRef } from 'react'
-import { ChevronUp, Bookmark, BookmarkCheck, Loader2, RefreshCw, MessageCircle, X } from 'lucide-react'
+import { ChevronUp, Bookmark, BookmarkCheck, Loader2, RefreshCw, MessageCircle, X, Copy, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
@@ -57,6 +57,21 @@ export default function Home() {
   const [chatInput, setChatInput] = useState('')
   const [chatLoading, setChatLoading] = useState(false)
   const chatScrollRef = useRef<HTMLDivElement>(null)
+  const [copied, setCopied] = useState(false)
+
+  const copyCardText = () => {
+    if (!currentPaper) return
+    const parts = [
+      currentPaper.question && `Question: ${currentPaper.question}`,
+      currentPaper.thesis && `Thesis: ${currentPaper.thesis}`,
+      currentPaper.method && `Method: ${currentPaper.method}`,
+      `\n${currentPaper.title}`,
+      currentPaper.arxivUrl,
+    ].filter(Boolean)
+    navigator.clipboard.writeText(parts.join('\n'))
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
 
   // Load bookmarks from localStorage
   useEffect(() => {
@@ -852,6 +867,21 @@ export default function Home() {
               }}
             >
               <MessageCircle className={cn("h-5 w-5", showChat && "text-primary")} />
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation()
+                copyCardText()
+              }}
+            >
+              {copied ? (
+                <Check className="h-5 w-5 text-green-500" />
+              ) : (
+                <Copy className="h-5 w-5" />
+              )}
             </Button>
 
             <Button

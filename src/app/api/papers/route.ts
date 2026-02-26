@@ -33,9 +33,9 @@ const TOPIC_TAGS = [
   'AI in society',
 ] as const
 
-const USER_INTERESTS = `synthetic data, post-training/alignment methods, information retrieval/search, embeddings, interpretability (mechanistic interpretability, representation engineering - understanding what models learn and why), program search/synthesis (using search or learning to write programs as a way to solve problems), low-latency LLM generation (radical 100-1000x speedups like speculative decoding or new architectures, NOT incremental training or optimizer improvements), code generation, agents and tool use, evaluation/verification (especially where ground truth is hard to obtain), new modes of human-AI collaboration and UX for scientific computing, AI's impact on and role in society.
+const USER_INTERESTS = `synthetic data, post-training/alignment methods, information retrieval/search, embeddings, interpretability (mechanistic interpretability, representation engineering - understanding what models learn and why), program search/synthesis (using search or learning to write programs as a way to solve problems), low-latency LLM generation (radical 100-1000x speedups like speculative decoding or new architectures, NOT incremental training or optimizer improvements), code generation, agents and tool use, evaluation/verification (novel evaluation METHODS, especially where ground truth is hard to obtain — NOT new benchmarks/datasets unless they are paradigm-shifting like the first benchmark for a genuinely new capability), new modes of human-AI collaboration and UX for scientific computing, AI's impact on and role in society.
 
-NOT interested in: training optimizer tweaks (Adam variants, learning rate schedules, gradient flow improvements, convergence speedups), incremental model architecture changes (yet another attention variant), standard benchmark improvements without new ideas, differential privacy, pure fairness/ethics frameworks without technical novelty.`
+NOT interested in: training optimizer tweaks (Adam variants, learning rate schedules, gradient flow improvements, convergence speedups), incremental model architecture changes (yet another attention variant), standard benchmark improvements without new ideas, new benchmarks or datasets that just test existing capabilities on a new domain (only include benchmarks that define a genuinely new evaluation paradigm), differential privacy, pure fairness/ethics frameworks without technical novelty.`
 
 
 // Fetch paper content from arXiv HTML for deeper analysis
@@ -237,7 +237,7 @@ Paper Title: ${paper.title}
 Abstract: ${paper.abstract}${contentSection}
 
 1. TAG: 1-2 word subfield label (e.g., "interpretability", "speculative decoding", "synthetic data"). Not "AI" or "LLM".
-2. QUESTION: Frame the core problem or tension as an open-ended question. NOT "can X do Y?" or "is X possible?" — instead frame it as "how should we...", "what's the best way to...", or "why does X happen?" The reader should be able to form their own thesis in response. For ResNet: "How do you train a 100+ layer net without gradients vanishing?"
+2. QUESTION: Frame the broad problem space as an open-ended question. The question should identify the PROBLEM AREA without hinting at the paper's specific thesis or approach. A good question has many plausible answers — it should be possible to propose a thesis that is completely different from the paper's actual thesis. BAD: "How should we test AI agents on tasks that need combining evidence?" (leaks the thesis). GOOD: "How should we evaluate whether AI agents can actually reason?" For ResNet: "How do you train very deep neural networks?"
 3. THESIS: The belief about the world that motivated this work. This is NOT a summary of the paper - it's the pre-existing conviction that led the researchers to pursue this approach in the first place. It should be something you could disagree with. Think "why this approach?" not "what did they do?" For ResNet: "Deeper is better if you can get gradients to flow."
 4. METHOD: The specific technical trick that operationalizes the thesis. The "how." For ResNet: "Learn f(x)+x instead of f(x) — each layer learns a small correction."
 
