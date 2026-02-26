@@ -33,9 +33,13 @@ const TOPIC_TAGS = [
   'AI in society',
 ] as const
 
-const USER_INTERESTS = `synthetic data, post-training/alignment methods, information retrieval/search, embeddings, interpretability (mechanistic interpretability, representation engineering - understanding what models learn and why), program search/synthesis (using search or learning to write programs as a way to solve problems), low-latency LLM generation (radical 100-1000x speedups like speculative decoding or new architectures, NOT incremental training or optimizer improvements), code generation, agents and tool use, evaluation/verification (novel evaluation METHODS, especially where ground truth is hard to obtain — NOT new benchmarks/datasets unless they are paradigm-shifting like the first benchmark for a genuinely new capability), new modes of human-AI collaboration and UX for scientific computing, AI's impact on and role in society.
+const USER_INTERESTS = `The primary interest is understanding and shaping LLM behavior — the model itself more than the scaffolding around it.
 
-NOT interested in: training optimizer tweaks (Adam variants, learning rate schedules, gradient flow improvements, convergence speedups), incremental model architecture changes (yet another attention variant), standard benchmark improvements without new ideas, new benchmarks or datasets that just test existing capabilities on a new domain (only include benchmarks that define a genuinely new evaluation paradigm), differential privacy, pure fairness/ethics frameworks without technical novelty.`
+Top interests: post-training/alignment methods (RLHF, DPO, and beyond), decoding strategies and tokenization, interpretability (mechanistic interpretability, representation engineering — understanding what models learn and why), synthetic data for training, embeddings, information retrieval/search, low-latency LLM generation (radical 100-1000x speedups like speculative decoding or new architectures, NOT incremental training or optimizer improvements), program search/synthesis, code generation, evaluation/verification (novel evaluation METHODS — not new benchmarks unless paradigm-shifting).
+
+Secondary interests: agents and tool use (prefer work on the model's capabilities over agent scaffolding/orchestration), new modes of human-AI collaboration and UX for scientific computing, AI's impact on and role in society.
+
+NOT interested in: image/video diffusion models (text diffusion is fine), training optimizer tweaks (Adam variants, learning rate schedules, gradient flow improvements), incremental model architecture changes (yet another attention variant), standard benchmark improvements without new ideas, new benchmarks/datasets that just test existing capabilities on a new domain, non-technical evaluation or survey papers, differential privacy, pure fairness/ethics frameworks without technical novelty, agent scaffolding papers that don't involve novel model behavior.`
 
 
 // Fetch paper content from arXiv HTML for deeper analysis
