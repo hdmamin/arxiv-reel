@@ -360,6 +360,12 @@ export default function Home() {
             overall: data.overall,
           })
 
+          // Seed chat with the follow-up question
+          if (data.followup) {
+            setChatMessages([{ role: 'assistant', content: data.followup }])
+            setShowChat(true)
+          }
+
           // Save interaction to database (non-blocking)
           fetch('/api/interactions', {
             method: 'POST',
