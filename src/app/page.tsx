@@ -132,11 +132,8 @@ export default function Home() {
           handleScroll('down')
           break
         case ' ':
-        case 'Enter':
-          if (!isActiveMode) {
-            e.preventDefault()
-            handleFlip()
-          }
+          e.preventDefault()
+          handleFlip()
           break
         case 'b':
         case 'B':
