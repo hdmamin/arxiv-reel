@@ -248,6 +248,14 @@ export default function Home() {
     fetchPapers()
   }, [fetchPapers])
 
+  // Auto-exit bookmarks view when bookmarks become empty
+  useEffect(() => {
+    if (showBookmarks && bookmarks.length === 0) {
+      setShowBookmarks(false)
+      setCurrentIndex(0)
+    }
+  }, [showBookmarks, bookmarks.length])
+
   const currentPaper = showBookmarks ? bookmarks[currentIndex] : papers[currentIndex]
 
   // Generate a consistent color for a tag based on its text
