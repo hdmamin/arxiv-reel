@@ -60,6 +60,59 @@ export default function Home() {
   const chatScrollRef = useRef<HTMLDivElement>(null)
   const [copied, setCopied] = useState(false)
 
+  // Review mode state
+  interface Interaction {
+    id: string
+    paperId: string
+    paperTitle: string
+    paperTag: string | null
+    question: string
+    thesisGuess: string
+    methodGuess: string
+    realThesis: string
+    realMethod: string
+    thesisFeedback: string | null
+    methodFeedback: string | null
+    overallFeedback: string | null
+    createdAt: string
+  }
+  const [interactions, setInteractions] = useState<Interaction[]>([])
+  const [loadingInteractions, setLoadingInteractions] = useState(false)
+  const [expandedInteraction, setExpandedInteraction] = useState<string | null>(null)
+  const [report, setReport] = useState<string | null>(null)
+  const [loadingReport, setLoadingReport] = useState(false)
+
+  // Fetch interactions when entering review mode
+  useEffect(() => {
+    if (mode !== 'review') return
+    setLoadingInteractions(true)
+    fetch('/api/interactions?limit=100')
+      .then(res => res.json())
+      .then(data => setInteractions(data.interactions || []))
+      .catch(err => console.error('Error fetching interactions:', err))
+      .finally(() => setLoadingInteractions(false))
+  }, [mode])
+
+  const generateReport = async () => {
+    if (interactions.length === 0) return
+    setLoadingReport(true)
+    try {
+      const response = await fetch('/api/report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ interactions: interactions.slice(0, 50) }),
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setReport(data.report)
+      }
+    } catch (error) {
+      console.error('Error generating report:', error)
+    } finally {
+      setLoadingReport(false)
+    }
+  }
+
   const copyCardText = () => {
     if (!currentPaper) return
     const parts = [
@@ -487,6 +540,124 @@ export default function Home() {
       </div>
 
       {/* Main Content */}
+      {mode === 'review' ? (
+        <div className="h-full pt-20 pb-20 overflow-y-auto">
+          <div className="max-w-2xl mx-auto px-4 space-y-6">
+            {/* Report section */}
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Review</h2>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={generateReport}
+                disabled={loadingReport || interactions.length === 0}
+              >
+                {loadingReport ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Generating...
+                  </>
+                ) : (
+                  'Generate Report'
+                )}
+              </Button>
+            </div>
+
+            {report && (
+              <Card>
+                <CardContent className="p-6">
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Report</h3>
+                  <div className="text-sm whitespace-pre-wrap">{report}</div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Interaction history */}
+            {loadingInteractions ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              </div>
+            ) : interactions.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-12">
+                No interactions yet. Complete some exercises in Active mode first.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {interactions.map((interaction) => (
+                  <Card
+                    key={interaction.id}
+                    className="cursor-pointer hover:border-primary/50 transition-colors"
+                    onClick={() => setExpandedInteraction(
+                      expandedInteraction === interaction.id ? null : interaction.id
+                    )}
+                  >
+                    <CardContent className="p-4">
+                      {/* Compact row */}
+                      <div className="flex items-start gap-3">
+                        {interaction.paperTag && (
+                          <span className={cn(
+                            "px-2 py-0.5 rounded-full text-xs font-medium shrink-0",
+                            getTagColor(interaction.paperTag)
+                          )}>
+                            {interaction.paperTag}
+                          </span>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{interaction.paperTitle}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {new Date(interaction.createdAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Expanded details */}
+                      {expandedInteraction === interaction.id && (
+                        <div className="mt-4 space-y-4 border-t pt-4">
+                          <div>
+                            <p className="text-xs font-medium text-muted-foreground uppercase mb-1">Question</p>
+                            <p className="text-sm italic">{interaction.question}</p>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <p className="text-xs font-medium text-muted-foreground mb-1">Your Thesis</p>
+                              <p className="text-sm">{interaction.thesisGuess}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs font-medium text-primary mb-1">Actual Thesis</p>
+                              <p className="text-sm">{interaction.realThesis}</p>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <p className="text-xs font-medium text-muted-foreground mb-1">Your Method</p>
+                              <p className="text-sm">{interaction.methodGuess}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs font-medium text-primary mb-1">Actual Method</p>
+                              <p className="text-sm">{interaction.realMethod}</p>
+                            </div>
+                          </div>
+
+                          {interaction.overallFeedback && (
+                            <div>
+                              <p className="text-xs font-medium text-muted-foreground mb-1">Feedback</p>
+                              <p className="text-xs text-muted-foreground italic border-l-2 border-primary/30 pl-3">
+                                {interaction.overallFeedback}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
       <div className="flex items-center justify-center h-full pt-20 pb-20">
         <div className="relative w-full max-w-2xl h-[80vh] perspective-1000">
           {/* Paper Card */}
@@ -793,6 +964,7 @@ export default function Home() {
           </div>
         </div>
       </div>
+      )}
 
       {/* Chat Panel — right side */}
       {showChat && (
@@ -858,6 +1030,7 @@ export default function Home() {
       )}
 
       {/* Navigation Controls */}
+      {mode !== 'review' && (
       <div className="absolute bottom-0 left-0 right-0 z-20 p-4 bg-gradient-to-t from-background/80 to-transparent">
         <div className="flex flex-col items-center gap-4">
           <div className="flex gap-4">
@@ -945,6 +1118,8 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      )}
 
       {/* Keyboard navigation */}
       <div className="sr-only">
