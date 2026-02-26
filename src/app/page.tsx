@@ -41,7 +41,7 @@ export default function Home() {
 
   // Mode state
   type Mode = 'passive' | 'active' | 'review'
-  const [mode, setMode] = useState<Mode>('passive')
+  const [mode, setMode] = useState<Mode>('active')
   const [activeStage, setActiveStage] = useState<1 | 2 | 3>(1)
   const [thesisGuess, setThesisGuess] = useState('')
   const [methodGuess, setMethodGuess] = useState('')
