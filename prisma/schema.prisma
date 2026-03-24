@@ -22,3 +22,11 @@ model Interaction {
   overallFeedback String?
   createdAt       DateTime @default(now())
 }
+
+model PaperGrade {
+  id        String   @id @default(cuid())
+  paperId   String   @unique
+  grade     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

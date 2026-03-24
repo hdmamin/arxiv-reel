@@ -58,6 +58,12 @@ export default function Home() {
   } | null>(null)
   const [loadingFeedback, setLoadingFeedback] = useState(false)
 
+  // Grading state
+  const GRADES = ['A', 'B', 'C', 'D', 'F'] as const
+  type Grade = typeof GRADES[number]
+  const [grades, setGrades] = useState<Record<string, Grade>>({})
+  const [gradingActive, setGradingActive] = useState(false)
+
   // Chat state
   const [showChat, setShowChat] = useState(false)
   const [chatWide, setChatWide] = useState(false)
@@ -202,6 +208,17 @@ export default function Home() {
         return
       }
 
+      // Grading chord: G activates, then A-F assigns grade, Escape/any other key cancels
+      if (gradingActive) {
+        e.preventDefault()
+        const key = e.key.toUpperCase()
+        if (GRADES.includes(key as Grade) && currentPaper) {
+          saveGrade(currentPaper.id, key as Grade)
+        }
+        setGradingActive(false)
+        return
+      }
+
       switch (e.key) {
         case 'ArrowUp':
         case 'k':
@@ -236,6 +253,11 @@ export default function Home() {
             setChatWide(prev => !prev)
           }
           break
+        case 'g':
+        case 'G':
+          e.preventDefault()
+          setGradingActive(true)
+          break
         case 'r':
         case 'R':
           e.preventDefault()
@@ -256,11 +278,36 @@ export default function Home() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [currentIndex, papers, bookmarks, isFlipped, showBookmarks, mode, showChat, fetchPapers])
+  }, [currentIndex, papers, bookmarks, isFlipped, showBookmarks, mode, showChat, fetchPapers, gradingActive, currentPaper])
 
   useEffect(() => {
     fetchPapers()
   }, [fetchPapers])
+
+  // Load existing grades on mount
+  useEffect(() => {
+    fetch('/api/grades')
+      .then(res => res.json())
+      .then(data => {
+        const map: Record<string, Grade> = {}
+        for (const g of data.grades || []) map[g.paperId] = g.grade
+        setGrades(map)
+      })
+      .catch(err => console.error('Error loading grades:', err))
+  }, [])
+
+  const saveGrade = async (paperId: string, grade: Grade) => {
+    setGrades(prev => ({ ...prev, [paperId]: grade }))
+    try {
+      await fetch('/api/grades', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paperId, grade }),
+      })
+    } catch (err) {
+      console.error('Error saving grade:', err)
+    }
+  }
 
   // Auto-exit bookmarks view when bookmarks become empty
   useEffect(() => {
@@ -533,7 +580,7 @@ export default function Home() {
           <div>
             <h1 className="text-2xl font-bold">TLDRxiv</h1>
             <p className="text-xs text-muted-foreground mt-1">
-              ↑↓ Navigate | Space Flip | C Chat | W Widen | B Bookmark | R Refresh | ESC Back
+              ↑↓ Navigate | Space Flip | G Grade | C Chat | W Widen | B Bookmark | R Refresh
             </p>
           </div>
           <div className="flex gap-2 items-center">
@@ -1180,7 +1227,58 @@ export default function Home() {
                 <Bookmark className="h-5 w-5" />
               )}
             </Button>
-            
+
+            {/* Grade indicator / grading panel */}
+            <div className="relative">
+              {gradingActive ? (
+                <div className="flex items-center gap-1 bg-background/90 border rounded-lg px-2 py-1">
+                  {GRADES.map(g => (
+                    <button
+                      key={g}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        if (currentPaper) saveGrade(currentPaper.id, g)
+                        setGradingActive(false)
+                      }}
+                      className={cn(
+                        "w-7 h-7 rounded text-xs font-bold transition-colors",
+                        currentPaper && grades[currentPaper.id] === g
+                          ? "bg-primary text-primary-foreground"
+                          : "hover:bg-muted"
+                      )}
+                    >
+                      {g}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setGradingActive(true)
+                  }}
+                  title="Grade paper (G)"
+                >
+                  {currentPaper && grades[currentPaper.id] ? (
+                    <span className={cn(
+                      "text-sm font-bold",
+                      grades[currentPaper.id] === 'A' && "text-green-500",
+                      grades[currentPaper.id] === 'B' && "text-blue-500",
+                      grades[currentPaper.id] === 'C' && "text-yellow-500",
+                      grades[currentPaper.id] === 'D' && "text-orange-500",
+                      grades[currentPaper.id] === 'F' && "text-red-500",
+                    )}>
+                      {grades[currentPaper.id]}
+                    </span>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">G</span>
+                  )}
+                </Button>
+              )}
+            </div>
+
             <div className="text-sm text-muted-foreground">
               {currentIndex + 1} / {showBookmarks ? bookmarks.length : papers.length}
             </div>
