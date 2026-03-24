@@ -271,8 +271,8 @@ export default function Home() {
             handleBookmark(currentPaper)
           }
           break
-        case 'c':
-        case 'C':
+        case 'l':
+        case 'L':
           e.preventDefault()
           setShowChat(prev => !prev)
           break
@@ -610,7 +610,7 @@ export default function Home() {
           <div>
             <h1 className="text-2xl font-bold">TLDRxiv</h1>
             <p className="text-xs text-muted-foreground mt-1">
-              ↑↓ Navigate | Space Flip | G Grade | C Chat | W Widen | B Bookmark | R Refresh
+              ↑↓ Navigate | Space Flip | G Grade | L Chat | W Widen | B Bookmark | R Refresh
             </p>
           </div>
           <div className="flex gap-2 items-center">
@@ -1258,10 +1258,92 @@ export default function Home() {
               )}
             </Button>
 
-            {/* Grade indicator / grading panel */}
+            {/* Grade indicator / grading grid */}
             <div className="relative">
+              {(gradingActive || pendingGrade) && (
+                <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-background border rounded-lg shadow-lg p-1.5 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="grid grid-cols-5 gap-0.5" style={{ width: '170px' }}>
+                    {/* Row 1: + grades */}
+                    {BASE_GRADES.map(g => {
+                      const grade = `${g}+`
+                      const isCurrentGrade = currentPaper && grades[currentPaper.id] === grade
+                      const isInPendingCol = pendingGrade === g
+                      if (g === 'F') return <div key="F+" className="h-7" />
+                      return (
+                        <button
+                          key={grade}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            if (currentPaper) saveGrade(currentPaper.id, grade)
+                            setPendingGrade(null)
+                            setGradingActive(false)
+                          }}
+                          className={cn(
+                            "h-7 rounded text-xs font-bold transition-colors",
+                            isCurrentGrade ? "bg-primary text-primary-foreground"
+                              : isInPendingCol ? "bg-muted/80 ring-1 ring-primary/40"
+                              : "hover:bg-muted"
+                          )}
+                        >
+                          {grade}
+                        </button>
+                      )
+                    })}
+                    {/* Row 2: plain grades */}
+                    {BASE_GRADES.map(g => {
+                      const isCurrentGrade = currentPaper && grades[currentPaper.id] === g
+                      const isInPendingCol = pendingGrade === g
+                      return (
+                        <button
+                          key={g}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            if (currentPaper) saveGrade(currentPaper.id, g)
+                            setPendingGrade(null)
+                            setGradingActive(false)
+                          }}
+                          className={cn(
+                            "h-7 rounded text-xs font-bold transition-colors",
+                            isCurrentGrade ? "bg-primary text-primary-foreground"
+                              : isInPendingCol ? "bg-muted/80 ring-1 ring-primary/40"
+                              : "hover:bg-muted"
+                          )}
+                        >
+                          {g}
+                        </button>
+                      )
+                    })}
+                    {/* Row 3: - grades */}
+                    {BASE_GRADES.map(g => {
+                      const grade = `${g}-`
+                      const isCurrentGrade = currentPaper && grades[currentPaper.id] === grade
+                      const isInPendingCol = pendingGrade === g
+                      if (g === 'F') return <div key="F-" className="h-7" />
+                      return (
+                        <button
+                          key={grade}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            if (currentPaper) saveGrade(currentPaper.id, grade)
+                            setPendingGrade(null)
+                            setGradingActive(false)
+                          }}
+                          className={cn(
+                            "h-7 rounded text-xs font-bold transition-colors",
+                            isCurrentGrade ? "bg-primary text-primary-foreground"
+                              : isInPendingCol ? "bg-muted/80 ring-1 ring-primary/40"
+                              : "hover:bg-muted"
+                          )}
+                        >
+                          {grade}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
               {gradeConfirmed ? (
-                <div className="flex items-center gap-1.5 bg-background/90 border rounded-lg px-3 py-1 animate-in fade-in zoom-in-95 duration-200">
+                <div className="flex items-center gap-1.5 px-2 py-1 animate-in fade-in zoom-in-95 duration-200">
                   <Check className="h-3.5 w-3.5 text-green-500" />
                   <span className={cn(
                     "text-sm font-bold",
@@ -1273,59 +1355,6 @@ export default function Home() {
                   )}>
                     {currentPaper && grades[currentPaper.id]}
                   </span>
-                </div>
-              ) : (gradingActive || pendingGrade) ? (
-                <div className="flex items-center gap-1 bg-background/90 border rounded-lg px-2 py-1">
-                  {pendingGrade ? (
-                    <>
-                      {(pendingGrade === 'F' ? [' '] : ['−', ' ', '+']).map((mod) => {
-                        const suffix = mod === '+' ? '+' : mod === '−' ? '-' : ''
-                        const label = mod === ' ' ? pendingGrade : `${pendingGrade}${mod}`
-                        return (
-                          <button
-                            key={label}
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              if (currentPaper) saveGrade(currentPaper.id, `${pendingGrade}${suffix}`)
-                              setPendingGrade(null)
-                              setGradingActive(false)
-                            }}
-                            className={cn(
-                              "h-7 rounded text-xs font-bold hover:bg-muted transition-colors",
-                              mod === ' ' ? "w-7" : "w-8"
-                            )}
-                          >
-                            {label}
-                          </button>
-                        )
-                      })}
-                    </>
-                  ) : (
-                    BASE_GRADES.map(g => (
-                      <button
-                        key={g}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          if (currentPaper) {
-                            if (g === 'F') {
-                              saveGrade(currentPaper.id, 'F')
-                              setGradingActive(false)
-                            } else {
-                              setPendingGrade(g)
-                            }
-                          }
-                        }}
-                        className={cn(
-                          "w-7 h-7 rounded text-xs font-bold transition-colors",
-                          currentPaper && grades[currentPaper.id]?.[0] === g
-                            ? "bg-primary text-primary-foreground"
-                            : "hover:bg-muted"
-                        )}
-                      >
-                        {g}
-                      </button>
-                    ))
-                  )}
                 </div>
               ) : (
                 <Button
