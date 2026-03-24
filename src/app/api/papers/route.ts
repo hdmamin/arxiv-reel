@@ -80,7 +80,7 @@ async function fetchPaperContent(arxivId: string): Promise<string> {
 
 // Search recent papers from arXiv, sorted by submission date
 async function searchArxivPapers(maxResults: number = 50, offset: number = 0): Promise<ArxivPaper[]> {
-  const baseUrl = 'http://export.arxiv.org/api/query'
+  const baseUrl = 'https://export.arxiv.org/api/query'
 
   // Broad category-based queries sorted by newest first.
   // We fetch more than needed from each and deduplicate, since there's overlap.

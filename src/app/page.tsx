@@ -2,13 +2,19 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRef } from 'react'
-import { ChevronUp, Bookmark, BookmarkCheck, Loader2, RefreshCw, MessageCircle, X, Copy, Check } from 'lucide-react'
+import { ChevronUp, Bookmark, BookmarkCheck, Loader2, RefreshCw, MessageCircle, X, Copy, Check, Maximize2, Minimize2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
+import ReactMarkdown from 'react-markdown'
+import remarkMath from 'remark-math'
+import rehypeKatex from 'rehype-katex'
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
+import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
+import 'katex/dist/katex.min.css'
 
 interface Paper {
   id: string
@@ -54,6 +60,7 @@ export default function Home() {
 
   // Chat state
   const [showChat, setShowChat] = useState(false)
+  const [chatWide, setChatWide] = useState(false)
   const [chatMessages, setChatMessages] = useState<{role: 'user' | 'assistant', content: string}[]>([])
   const [chatInput, setChatInput] = useState('')
   const [chatLoading, setChatLoading] = useState(false)
@@ -221,6 +228,13 @@ export default function Home() {
         case 'C':
           e.preventDefault()
           setShowChat(prev => !prev)
+          break
+        case 'w':
+        case 'W':
+          if (showChat) {
+            e.preventDefault()
+            setChatWide(prev => !prev)
+          }
           break
         case 'r':
         case 'R':
@@ -429,6 +443,10 @@ export default function Home() {
     return ''
   }
 
+  // Convert \(...\) → $...$ and \[...\] → $$...$$ for remark-math
+  const normalizeMathDelimiters = (text: string) =>
+    text.replace(/\\\((.*?)\\\)/g, '$$$1$$').replace(/\\\[([\s\S]*?)\\\]/g, '$$$$$1$$$$')
+
   const sendChatMessage = async () => {
     if (!chatInput.trim() || chatLoading || !currentPaper) return
 
@@ -515,7 +533,7 @@ export default function Home() {
           <div>
             <h1 className="text-2xl font-bold">TLDRxiv</h1>
             <p className="text-xs text-muted-foreground mt-1">
-              ↑↓ Navigate | Space Flip | C Chat | B Bookmark | R Refresh | ESC Back
+              ↑↓ Navigate | Space Flip | C Chat | W Widen | B Bookmark | R Refresh | ESC Back
             </p>
           </div>
           <div className="flex gap-2 items-center">
@@ -987,20 +1005,34 @@ export default function Home() {
 
       {/* Chat Panel — right side */}
       {showChat && (
-        <div className="fixed top-0 right-0 z-40 h-full w-[400px] border-l bg-background shadow-lg flex flex-col">
+        <div className={cn(
+          "fixed top-0 right-0 z-40 h-full border-l bg-background shadow-lg flex flex-col transition-all duration-200",
+          chatWide ? "w-[50vw]" : "w-[400px]"
+        )}>
           {/* Chat header */}
           <div className="flex items-center justify-between px-4 py-3 border-b">
             <p className="text-xs text-muted-foreground truncate flex-1 mr-2">
               {currentPaper?.title}
             </p>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 w-6 p-0"
-              onClick={() => setShowChat(false)}
-            >
-              <X className="h-3 w-3" />
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0"
+                onClick={() => setChatWide(prev => !prev)}
+                title="Toggle width (W)"
+              >
+                {chatWide ? <Minimize2 className="h-3 w-3" /> : <Maximize2 className="h-3 w-3" />}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0"
+                onClick={() => setShowChat(false)}
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
           </div>
 
           {/* Messages */}
@@ -1015,9 +1047,45 @@ export default function Home() {
                 "max-w-[85%] text-sm rounded-lg px-3 py-2",
                 msg.role === 'user'
                   ? "ml-auto bg-primary text-primary-foreground"
-                  : "bg-muted"
+                  : "bg-muted chat-markdown"
               )}>
-                {msg.content}
+                {msg.role === 'user' ? msg.content : (
+                  <ReactMarkdown
+                    remarkPlugins={[remarkMath]}
+                    rehypePlugins={[rehypeKatex]}
+                    components={{
+                      code({ className, children, ...props }) {
+                        const match = /language-(\w+)/.exec(className || '')
+                        const inline = !match && !String(children).includes('\n')
+                        return inline ? (
+                          <code className="bg-background/50 rounded px-1 py-0.5 text-xs font-mono" {...props}>
+                            {children}
+                          </code>
+                        ) : (
+                          <SyntaxHighlighter
+                            style={oneDark}
+                            language={match?.[1] || 'text'}
+                            PreTag="div"
+                            customStyle={{ margin: '0.5rem 0', borderRadius: '0.375rem', fontSize: '0.75rem' }}
+                          >
+                            {String(children).replace(/\n$/, '')}
+                          </SyntaxHighlighter>
+                        )
+                      },
+                      p({ children }) {
+                        return <p className="mb-2 last:mb-0">{children}</p>
+                      },
+                      ul({ children }) {
+                        return <ul className="list-disc pl-4 mb-2">{children}</ul>
+                      },
+                      ol({ children }) {
+                        return <ol className="list-decimal pl-4 mb-2">{children}</ol>
+                      },
+                    }}
+                  >
+                    {normalizeMathDelimiters(msg.content)}
+                  </ReactMarkdown>
+                )}
               </div>
             ))}
             {chatLoading && (

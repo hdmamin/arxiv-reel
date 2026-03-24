@@ -33,7 +33,9 @@ ${paperContext}
 
 The question being explored: ${question}
 
-Keep responses concise (2-4 sentences). Be a helpful thinking partner, not an answer key.`
+Keep responses concise (2-4 sentences). Be a helpful thinking partner, not an answer key.
+
+When writing math, always use dollar-sign delimiters: $x$ for inline math, $$x$$ for display math. Never use \\( \\) or \\[ \\] delimiters. Use standard markdown for code blocks (\`\`\`python etc).`
     } else {
       // Post-feedback or passive: discuss freely
       const fullContext = [
@@ -54,6 +56,8 @@ Keep responses concise (2-4 sentences). Be a helpful thinking partner, not an an
       }
 
       systemPrompt = `You're discussing a research paper with an ML researcher. Answer their questions, explore implications, debate ideas, and help them think deeply about the work. Be concise but substantive (2-4 sentences unless they ask for more detail).
+
+When writing math, always use dollar-sign delimiters: $x$ for inline math, $$x$$ for display math. Never use \\( \\) or \\[ \\] delimiters. Use standard markdown for code blocks (\`\`\`python etc).
 
 ${fullContext.join('\n')}`
     }
