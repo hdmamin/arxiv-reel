@@ -64,7 +64,7 @@ export default function Home() {
   const [grades, setGrades] = useState<Record<string, string>>({})
   const [gradingActive, setGradingActive] = useState(false)
   const [pendingGrade, setPendingGrade] = useState<BaseGrade | null>(null)
-  const pendingGradeTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [gradeConfirmed, setGradeConfirmed] = useState(false)
 
   // Chat state
   const [showChat, setShowChat] = useState(false)
@@ -212,16 +212,20 @@ export default function Home() {
         return
       }
 
-      // Grading chord: G → A-F → optional +/- (auto-confirms after 600ms)
+      // Grading chord: G → A-F → +/-/same letter to confirm
       if (pendingGrade) {
         e.preventDefault()
-        if (pendingGradeTimeout.current) clearTimeout(pendingGradeTimeout.current)
-        if ((e.key === '+' || e.key === '=' || e.key === '-') && currentPaper) {
-          const modifier = e.key === '-' ? '-' : '+'
-          const fullGrade = pendingGrade === 'F' ? 'F' : `${pendingGrade}${modifier}`
-          saveGrade(currentPaper.id, fullGrade)
-        } else if (currentPaper) {
+        const key = e.key.toUpperCase()
+        if ((e.key === '+' || e.key === '=') && pendingGrade !== 'F' && currentPaper) {
+          saveGrade(currentPaper.id, `${pendingGrade}+`)
+        } else if (e.key === '-' && pendingGrade !== 'F' && currentPaper) {
+          saveGrade(currentPaper.id, `${pendingGrade}-`)
+        } else if (key === pendingGrade && currentPaper) {
           saveGrade(currentPaper.id, pendingGrade)
+        } else if (e.key === 'Escape') {
+          // cancel
+        } else {
+          // Unrecognized key — cancel without saving
         }
         setPendingGrade(null)
         setGradingActive(false)
@@ -232,13 +236,13 @@ export default function Home() {
         e.preventDefault()
         const key = e.key.toUpperCase()
         if (BASE_GRADES.includes(key as BaseGrade) && currentPaper) {
-          setPendingGrade(key as BaseGrade)
-          // Auto-confirm after 600ms if no +/- follows
-          pendingGradeTimeout.current = setTimeout(() => {
-            if (currentPaper) saveGrade(currentPaper.id, key)
-            setPendingGrade(null)
+          if (key === 'F') {
+            // F has no +/-, confirm immediately
+            saveGrade(currentPaper.id, 'F')
             setGradingActive(false)
-          }, 600)
+          } else {
+            setPendingGrade(key as BaseGrade)
+          }
         } else {
           setGradingActive(false)
         }
@@ -315,15 +319,17 @@ export default function Home() {
     fetch('/api/grades')
       .then(res => res.json())
       .then(data => {
-        const map: Record<string, Grade> = {}
+        const map: Record<string, string> = {}
         for (const g of data.grades || []) map[g.paperId] = g.grade
         setGrades(map)
       })
       .catch(err => console.error('Error loading grades:', err))
   }, [])
 
-  const saveGrade = async (paperId: string, grade: Grade) => {
+  const saveGrade = async (paperId: string, grade: string) => {
     setGrades(prev => ({ ...prev, [paperId]: grade }))
+    setGradeConfirmed(true)
+    setTimeout(() => setGradeConfirmed(false), 800)
     try {
       await fetch('/api/grades', {
         method: 'PUT',
@@ -1254,25 +1260,40 @@ export default function Home() {
 
             {/* Grade indicator / grading panel */}
             <div className="relative">
-              {(gradingActive || pendingGrade) ? (
+              {gradeConfirmed ? (
+                <div className="flex items-center gap-1.5 bg-background/90 border rounded-lg px-3 py-1 animate-in fade-in zoom-in-95 duration-200">
+                  <Check className="h-3.5 w-3.5 text-green-500" />
+                  <span className={cn(
+                    "text-sm font-bold",
+                    currentPaper && grades[currentPaper.id]?.[0] === 'A' && "text-green-500",
+                    currentPaper && grades[currentPaper.id]?.[0] === 'B' && "text-blue-500",
+                    currentPaper && grades[currentPaper.id]?.[0] === 'C' && "text-yellow-500",
+                    currentPaper && grades[currentPaper.id]?.[0] === 'D' && "text-orange-500",
+                    currentPaper && grades[currentPaper.id]?.[0] === 'F' && "text-red-500",
+                  )}>
+                    {currentPaper && grades[currentPaper.id]}
+                  </span>
+                </div>
+              ) : (gradingActive || pendingGrade) ? (
                 <div className="flex items-center gap-1 bg-background/90 border rounded-lg px-2 py-1">
                   {pendingGrade ? (
                     <>
-                      <span className="text-xs font-bold w-5 text-center">{pendingGrade}</span>
-                      {pendingGrade !== 'F' && ['−', ' ', '+'].map((mod, i) => {
+                      {(pendingGrade === 'F' ? [' '] : ['−', ' ', '+']).map((mod) => {
                         const suffix = mod === '+' ? '+' : mod === '−' ? '-' : ''
                         const label = mod === ' ' ? pendingGrade : `${pendingGrade}${mod}`
                         return (
                           <button
-                            key={i}
+                            key={label}
                             onClick={(e) => {
                               e.stopPropagation()
-                              if (pendingGradeTimeout.current) clearTimeout(pendingGradeTimeout.current)
                               if (currentPaper) saveGrade(currentPaper.id, `${pendingGrade}${suffix}`)
                               setPendingGrade(null)
                               setGradingActive(false)
                             }}
-                            className="w-7 h-7 rounded text-xs font-bold hover:bg-muted transition-colors"
+                            className={cn(
+                              "h-7 rounded text-xs font-bold hover:bg-muted transition-colors",
+                              mod === ' ' ? "w-7" : "w-8"
+                            )}
                           >
                             {label}
                           </button>
@@ -1286,12 +1307,12 @@ export default function Home() {
                         onClick={(e) => {
                           e.stopPropagation()
                           if (currentPaper) {
-                            setPendingGrade(g)
-                            pendingGradeTimeout.current = setTimeout(() => {
-                              saveGrade(currentPaper.id, g)
-                              setPendingGrade(null)
+                            if (g === 'F') {
+                              saveGrade(currentPaper.id, 'F')
                               setGradingActive(false)
-                            }, 600)
+                            } else {
+                              setPendingGrade(g)
+                            }
                           }
                         }}
                         className={cn(
