@@ -59,10 +59,12 @@ export default function Home() {
   const [loadingFeedback, setLoadingFeedback] = useState(false)
 
   // Grading state
-  const GRADES = ['A', 'B', 'C', 'D', 'F'] as const
-  type Grade = typeof GRADES[number]
-  const [grades, setGrades] = useState<Record<string, Grade>>({})
+  const BASE_GRADES = ['A', 'B', 'C', 'D', 'F'] as const
+  type BaseGrade = typeof BASE_GRADES[number]
+  const [grades, setGrades] = useState<Record<string, string>>({})
   const [gradingActive, setGradingActive] = useState(false)
+  const [pendingGrade, setPendingGrade] = useState<BaseGrade | null>(null)
+  const pendingGradeTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Chat state
   const [showChat, setShowChat] = useState(false)
@@ -210,14 +212,36 @@ export default function Home() {
         return
       }
 
-      // Grading chord: G activates, then A-F assigns grade, Escape/any other key cancels
+      // Grading chord: G → A-F → optional +/- (auto-confirms after 600ms)
+      if (pendingGrade) {
+        e.preventDefault()
+        if (pendingGradeTimeout.current) clearTimeout(pendingGradeTimeout.current)
+        if ((e.key === '+' || e.key === '=' || e.key === '-') && currentPaper) {
+          const modifier = e.key === '-' ? '-' : '+'
+          const fullGrade = pendingGrade === 'F' ? 'F' : `${pendingGrade}${modifier}`
+          saveGrade(currentPaper.id, fullGrade)
+        } else if (currentPaper) {
+          saveGrade(currentPaper.id, pendingGrade)
+        }
+        setPendingGrade(null)
+        setGradingActive(false)
+        return
+      }
+
       if (gradingActive) {
         e.preventDefault()
         const key = e.key.toUpperCase()
-        if (GRADES.includes(key as Grade) && currentPaper) {
-          saveGrade(currentPaper.id, key as Grade)
+        if (BASE_GRADES.includes(key as BaseGrade) && currentPaper) {
+          setPendingGrade(key as BaseGrade)
+          // Auto-confirm after 600ms if no +/- follows
+          pendingGradeTimeout.current = setTimeout(() => {
+            if (currentPaper) saveGrade(currentPaper.id, key)
+            setPendingGrade(null)
+            setGradingActive(false)
+          }, 600)
+        } else {
+          setGradingActive(false)
         }
-        setGradingActive(false)
         return
       }
 
@@ -280,7 +304,7 @@ export default function Home() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [currentIndex, papers, bookmarks, isFlipped, showBookmarks, mode, showChat, fetchPapers, gradingActive, currentPaper])
+  }, [currentIndex, papers, bookmarks, isFlipped, showBookmarks, mode, showChat, fetchPapers, gradingActive, pendingGrade, currentPaper])
 
   useEffect(() => {
     fetchPapers()
@@ -1230,26 +1254,57 @@ export default function Home() {
 
             {/* Grade indicator / grading panel */}
             <div className="relative">
-              {gradingActive ? (
+              {(gradingActive || pendingGrade) ? (
                 <div className="flex items-center gap-1 bg-background/90 border rounded-lg px-2 py-1">
-                  {GRADES.map(g => (
-                    <button
-                      key={g}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        if (currentPaper) saveGrade(currentPaper.id, g)
-                        setGradingActive(false)
-                      }}
-                      className={cn(
-                        "w-7 h-7 rounded text-xs font-bold transition-colors",
-                        currentPaper && grades[currentPaper.id] === g
-                          ? "bg-primary text-primary-foreground"
-                          : "hover:bg-muted"
-                      )}
-                    >
-                      {g}
-                    </button>
-                  ))}
+                  {pendingGrade ? (
+                    <>
+                      <span className="text-xs font-bold w-5 text-center">{pendingGrade}</span>
+                      {pendingGrade !== 'F' && ['−', ' ', '+'].map((mod, i) => {
+                        const suffix = mod === '+' ? '+' : mod === '−' ? '-' : ''
+                        const label = mod === ' ' ? pendingGrade : `${pendingGrade}${mod}`
+                        return (
+                          <button
+                            key={i}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              if (pendingGradeTimeout.current) clearTimeout(pendingGradeTimeout.current)
+                              if (currentPaper) saveGrade(currentPaper.id, `${pendingGrade}${suffix}`)
+                              setPendingGrade(null)
+                              setGradingActive(false)
+                            }}
+                            className="w-7 h-7 rounded text-xs font-bold hover:bg-muted transition-colors"
+                          >
+                            {label}
+                          </button>
+                        )
+                      })}
+                    </>
+                  ) : (
+                    BASE_GRADES.map(g => (
+                      <button
+                        key={g}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (currentPaper) {
+                            setPendingGrade(g)
+                            pendingGradeTimeout.current = setTimeout(() => {
+                              saveGrade(currentPaper.id, g)
+                              setPendingGrade(null)
+                              setGradingActive(false)
+                            }, 600)
+                          }
+                        }}
+                        className={cn(
+                          "w-7 h-7 rounded text-xs font-bold transition-colors",
+                          currentPaper && grades[currentPaper.id]?.[0] === g
+                            ? "bg-primary text-primary-foreground"
+                            : "hover:bg-muted"
+                        )}
+                      >
+                        {g}
+                      </button>
+                    ))
+                  )}
                 </div>
               ) : (
                 <Button
@@ -1264,11 +1319,11 @@ export default function Home() {
                   {currentPaper && grades[currentPaper.id] ? (
                     <span className={cn(
                       "text-sm font-bold",
-                      grades[currentPaper.id] === 'A' && "text-green-500",
-                      grades[currentPaper.id] === 'B' && "text-blue-500",
-                      grades[currentPaper.id] === 'C' && "text-yellow-500",
-                      grades[currentPaper.id] === 'D' && "text-orange-500",
-                      grades[currentPaper.id] === 'F' && "text-red-500",
+                      grades[currentPaper.id]?.[0] === 'A' && "text-green-500",
+                      grades[currentPaper.id]?.[0] === 'B' && "text-blue-500",
+                      grades[currentPaper.id]?.[0] === 'C' && "text-yellow-500",
+                      grades[currentPaper.id]?.[0] === 'D' && "text-orange-500",
+                      grades[currentPaper.id]?.[0] === 'F' && "text-red-500",
                     )}>
                       {grades[currentPaper.id]}
                     </span>

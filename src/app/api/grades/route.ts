@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 
 
-const VALID_GRADES = ['A', 'B', 'C', 'D', 'F']
+const VALID_GRADES = ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D', 'D-', 'F']
 
 export async function PUT(request: NextRequest) {
   try {
