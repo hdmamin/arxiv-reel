@@ -193,6 +193,8 @@ export default function Home() {
     }
   }, [loadingMore, hasMore, papers.length])
 
+  const currentPaper = showBookmarks ? bookmarks[currentIndex] : papers[currentIndex]
+
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -316,8 +318,6 @@ export default function Home() {
       setCurrentIndex(0)
     }
   }, [showBookmarks, bookmarks.length])
-
-  const currentPaper = showBookmarks ? bookmarks[currentIndex] : papers[currentIndex]
 
   // Generate a consistent color for a tag based on its text
   const getTagColor = (tag: string) => {
