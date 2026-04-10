@@ -99,7 +99,7 @@ async function searchArxivPapers(maxResults: number = 50, offset: number = 0): P
 
   // Only keep papers from the last 7 days
   const cutoffDate = new Date()
-  cutoffDate.setDate(cutoffDate.getDate() - 7)
+  cutoffDate.setDate(cutoffDate.getDate() - 14)
 
   try {
     for (const searchQuery of searchQueries) {
